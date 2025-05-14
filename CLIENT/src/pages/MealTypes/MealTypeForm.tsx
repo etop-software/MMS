@@ -31,10 +31,9 @@ interface MealTypeFormProps {
   mealTypeToEdit?: MealType;
 }
 
-// ✅ Create Meal Type API call
-// ✅ Create Meal Type API call
+
 const createMealType = async (data: FormValues) => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/mealTypes`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/mealTypes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -45,7 +44,7 @@ const createMealType = async (data: FormValues) => {
 
 // ✅ Update Meal Type API call
 const updateMealType = async (id: number, data: FormValues) => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/mealTypes/${id}`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/mealTypes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -53,6 +52,7 @@ const updateMealType = async (id: number, data: FormValues) => {
   if (!res.ok) throw new Error("Failed to update meal type");
   return res.json();
 };
+
 
 
 const MealTypeForm: React.FC<MealTypeFormProps> = ({

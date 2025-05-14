@@ -25,18 +25,19 @@ import { usePagination } from "@/hooks/use-pagination";
 
 // Fetch Meal Types
 const fetchMealTypes = async (): Promise<MealType[]> => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/mealTypes`);
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/mealTypes`);
   if (!res.ok) throw new Error("Failed to fetch meal types");
   return res.json();
 };
 
 // Delete Meal Type
 const deleteMealType = async (id: number) => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/mealTypes/${id}`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/mealTypes/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete meal type");
 };
+
 
 
 const MealTypesList: React.FC = () => {

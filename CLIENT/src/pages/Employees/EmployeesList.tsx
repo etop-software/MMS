@@ -15,7 +15,7 @@ import axios from "axios";
 
 // Fetch Employees from API
 const fetchEmployees = async (): Promise<Employee[]> => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/employees/employees`);
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/employees/employees`);
   if (!res.ok) throw new Error("Failed to fetch employees");
   const data = await res.json();
   return data.data;
@@ -23,7 +23,7 @@ const fetchEmployees = async (): Promise<Employee[]> => {
 
 // Delete Employee from API
 const deleteEmployee = async (employeeId: number) => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/employees/employees/${employeeId}`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/employees/employees/${employeeId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete employee");
@@ -31,7 +31,7 @@ const deleteEmployee = async (employeeId: number) => {
 
 // Fetch Areas from API (for select/dropdown, etc.)
 const fetchAreas = async () => {
-  const response = await axios.get(`${process.env.REACT_APP_API_URL}/areas`);
+  const response = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
   return response.data;
 };
 

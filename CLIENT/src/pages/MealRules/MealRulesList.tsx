@@ -48,29 +48,30 @@ const MealRulesList: React.FC = () => {
   const [devicesByArea, setDevicesByArea] = useState<Map<number, Device[]>>(new Map());
 
   const {
-    data: mealRules = [],
-    isLoading,
-  } = useQuery({
-    queryKey: ["mealRules"],
-    queryFn: async () => {
-      const res = await fetch("http://localhost:4000/api/mealRules/meal-rules");
-      const json = await res.json();
-      return json.data;
-    },
-  });
+  data: mealRules = [],
+  isLoading,
+} = useQuery({
+  queryKey: ["mealRules"],
+  queryFn: async () => {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/mealRules/meal-rules`);
+    const json = await res.json();
+    return json.data;
+  },
+});
 
-  // === Fetch Meal Types and Areas ===
-  const fetchMealTypes = async (): Promise<MealType[]> => {
-    const res = await fetch("http://localhost:4000/api/mealTypes");
-    if (!res.ok) throw new Error("Failed to fetch meal types");
-    return res.json();
-  };
+// === Fetch Meal Types and Areas ===
+const fetchMealTypes = async (): Promise<MealType[]> => {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/mealTypes`);
+  if (!res.ok) throw new Error("Failed to fetch meal types");
+  return res.json();
+};
 
-  const fetchAreas = async (): Promise<Area[]> => {
-    const res = await fetch("http://localhost:4000/api/areas");
-    if (!res.ok) throw new Error("Failed to fetch areas");
-    return res.json();
-  };
+const fetchAreas = async (): Promise<Area[]> => {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/areas`);
+  if (!res.ok) throw new Error("Failed to fetch areas");
+  return res.json();
+};
+
 
   const {
     data: mealTypes = [],
@@ -118,17 +119,19 @@ const MealRulesList: React.FC = () => {
 
   // Fetch and store devices based on the selected area
   const fetchAndSetDevicesByArea = (areaId: string) => {
-    const parsedAreaId = parseInt(areaId);
-    if (parsedAreaId !== NaN) {
-      fetchDevicesByArea(parsedAreaId).then((devices) => {
-        setDevicesByArea((prevDevices) => {
-          const updatedDevices = new Map(prevDevices);
-          updatedDevices.set(parsedAreaId, devices);
-          return updatedDevices;
-        });
+  const parsedAreaId = parseInt(areaId, 10); 
+  
+  if (!isNaN(parsedAreaId)) { // Check if parsedAreaId is a valid number
+    fetchDevicesByArea(parsedAreaId).then((devices) => {
+      setDevicesByArea((prevDevices) => {
+        const updatedDevices = new Map(prevDevices);
+        updatedDevices.set(parsedAreaId, devices);
+        return updatedDevices;
       });
-    }
-  };
+    });
+  }
+};
+
 
   const filteredMealRules = filterAreaId === "all"
     ? mealRules

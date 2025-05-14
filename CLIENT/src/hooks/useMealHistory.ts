@@ -17,7 +17,7 @@ interface MealHistoryResponse {
 }
 
 const fetchMealHistory = async (filters: MealHistoryFilters): Promise<MealHistoryResponse> => {
-  const response = await axios.get('http://localhost:4000/api/meal-history', {
+  const response = await axios.get(`${import.meta.env.VITE_API_URL}/meal-history`, {
     params: {
       meal_type_id: filters.mealTypeId || null,
       employee_pin: filters.employeePin || null,
@@ -30,6 +30,7 @@ const fetchMealHistory = async (filters: MealHistoryFilters): Promise<MealHistor
   });
   return response.data;
 };
+
 
 export const useMealHistory = (filters: MealHistoryFilters) => {
   return useQuery({

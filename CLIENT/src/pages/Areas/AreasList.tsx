@@ -29,10 +29,11 @@ const AreasList: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
 
- const fetchAreas = async () => {
-  const response = await axios.get(`${process.env.REACT_APP_API_URL}/areas`);
+const fetchAreas = async () => {
+  const response = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
   return response.data;
 };
+
 
   const { data: areasData, isLoading, isError } = useQuery({
     queryKey: ["areas"], // The query key
@@ -52,13 +53,14 @@ const AreasList: React.FC = () => {
  const confirmDelete = () => {
   if (!selectedArea) return;
 
-  const deleteArea = async (id: number) => {
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/areas/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Failed to delete area");
-    return res.json();
-  };
+ const deleteArea = async (id: number) => {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/areas/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete area");
+  return res.json();
+};
+
 
   const mutation = useMutation({
     mutationFn: () => deleteArea(selectedArea.id),

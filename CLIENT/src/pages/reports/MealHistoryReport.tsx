@@ -31,17 +31,18 @@ const MealHistoryReport = () => {
   const exportMutation = useExportMealHistory();
 
   // Fetch meal types for dropdown
-  useEffect(() => {
-    const fetchMealTypes = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/mealTypes`);
-        setMealTypes(response.data || []);
-      } catch (error) {
-        console.error("Failed to fetch meal types:", error);
-      }
-    };
-    fetchMealTypes();
-  }, []);
+useEffect(() => {
+  const fetchMealTypes = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/mealTypes`);
+      setMealTypes(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch meal types:", error);
+    }
+  };
+  fetchMealTypes();
+}, []);
+
 
   // Generate PDF and display it in the viewer
   const handleGeneratePDF = () => {

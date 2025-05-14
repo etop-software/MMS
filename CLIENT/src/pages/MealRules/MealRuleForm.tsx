@@ -85,14 +85,14 @@ const MealRuleForm: React.FC<MealRuleFormProps> = ({
   });
 // Fetch Areas from API
 const fetchAreas = async (): Promise<Area[]> => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/areas`);
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/areas`);
   if (!res.ok) throw new Error("Failed to fetch areas");
   return res.json();
 };
 
 // Fetch Meal Types from API
 const fetchMealTypes = async (): Promise<MealType[]> => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/mealTypes`);
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/mealTypes`);
   if (!res.ok) throw new Error("Failed to fetch meal types");
   return res.json();
 };
@@ -100,7 +100,7 @@ const fetchMealTypes = async (): Promise<MealType[]> => {
 // Fetch Devices by Area from API
 const fetchDevicesByArea = async (areaId: number) => {
   const res = await fetch(
-    `${process.env.REACT_APP_API_URL}/devices/devices?areaId=${areaId}`
+    `${import.meta.env.VITE_API_URL}/devices/devices?areaId=${areaId}`
   );
   if (!res.ok) throw new Error("Failed to fetch devices");
   const data = await res.json();
@@ -146,9 +146,9 @@ const fetchDevicesByArea = async (areaId: number) => {
     );
   };
 
- const updateMealRule = async (payload: FormValues & { days: string[] }) => {
+const updateMealRule = async (payload: FormValues & { days: string[] }) => {
   const response = await fetch(
-    `${process.env.REACT_APP_API_URL}/mealRules/updateMealRule`,
+    `${import.meta.env.VITE_API_URL}/mealRules/updateMealRule`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

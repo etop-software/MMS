@@ -100,20 +100,21 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
   }, [employeeToEdit, isOpen]);
 
 const fetchAreas = async () => {
-  const res = await axios.get(`${process.env.REACT_APP_API_URL}/areas`);
+  const res = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
   return res.data;
 };
 
 const fetchDevicesByArea = async (areaId: number) => {
   try {
     setLoadingDevices((prev) => [...prev, areaId]);
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/devices/devices?areaId=${areaId}`);
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/devices/devices?areaId=${areaId}`);
     const data = await res.json();
     setDevicesByArea((prev) => ({ ...prev, [areaId]: data }));
   } finally {
     setLoadingDevices((prev) => prev.filter((id) => id !== areaId));
   }
 };
+
 
 
   const toggleArea = (areaId: number) => {
@@ -164,7 +165,7 @@ const fetchDevicesByArea = async (areaId: number) => {
   const mutation = useMutation({
   mutationFn: async (data: Omit<Employee, "employeeId">) => {
     // Using the environment variable for the base URL
-    const baseUrl = process.env.REACT_APP_API_URL;
+    const baseUrl = import.meta.env.VITE_API_URL;
     if (!baseUrl) throw new Error("API URL is not defined in the environment variables.");
 
     const url = employeeToEdit
@@ -186,6 +187,7 @@ const fetchDevicesByArea = async (areaId: number) => {
     onClose();
   },
 });
+
 
 
   const onSubmit = (values: FormValues) => {

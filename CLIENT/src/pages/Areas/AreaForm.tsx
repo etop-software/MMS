@@ -66,22 +66,22 @@ const AreaForm: React.FC<AreaFormProps> = ({
  // Mutation for creating area
 const createMutation = useMutation({
   mutationFn: (data: FormValues) =>
-    axios.post(`${process.env.REACT_APP_API_URL}/areas`, data),
+    axios.post(`${import.meta.env.VITE_API_URL}/areas`, data),
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ["areas"] });
     onClose();
   },
 });
 
-// Mutation for updating area
 const updateMutation = useMutation({
   mutationFn: (data: { id: number; name: string; description?: string }) =>
-    axios.put(`${process.env.REACT_APP_API_URL}/areas/${data.id}`, data),
+    axios.put(`${import.meta.env.VITE_API_URL}/areas/${data.id}`, data),
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ["areas"] });
     onClose();
   },
 });
+
 
 
   const onSubmit = (values: FormValues) => {
