@@ -1,20 +1,9 @@
 import React, { useState } from "react";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -22,38 +11,38 @@ import EmployeeForm from "./EmployeeForm";
 import { Employee } from "@/types";
 import TablePagination from "@/components/common/TablePagination";
 import { usePagination } from "@/hooks/use-pagination";
-import { useAppContext } from "@/context/AppContext";
 import axios from "axios";
 
+// Fetch Employees from API
 const fetchEmployees = async (): Promise<Employee[]> => {
-  const res = await fetch("http://localhost:4000/api/employees/employees");
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/employees/employees`);
   if (!res.ok) throw new Error("Failed to fetch employees");
   const data = await res.json();
   return data.data;
 };
 
+// Delete Employee from API
 const deleteEmployee = async (employeeId: number) => {
-  const res = await fetch(`http://localhost:4000/api/employees/employees/${employeeId}`, {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/employees/employees/${employeeId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete employee");
 };
 
- const fetchAreas = async () => {
-    const response = await axios.get("http://localhost:4000/api/areas");
-    return response.data;
-  };
-
+// Fetch Areas from API (for select/dropdown, etc.)
+const fetchAreas = async () => {
+  const response = await axios.get(`${process.env.REACT_APP_API_URL}/areas`);
+  return response.data;
+};
 
 const EmployeesList: React.FC = () => {
   const queryClient = useQueryClient();
-  // const { areas } = useAppContext();
-    // Updated useQuery hook with the correct object format
-  const { data: areasData} = useQuery({
-    queryKey: ["areas"], // The query key
-    queryFn: fetchAreas, // The function to fetch the data
-  });
 
+  // Use React Query to fetch areas data
+  const { data: areasData } = useQuery({
+    queryKey: ["areas"],
+    queryFn: fetchAreas,
+  });
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -61,11 +50,7 @@ const EmployeesList: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
   // Query for employee list
-  const {
-    data: employees = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const { data: employees = [], isLoading, isError } = useQuery({
     queryKey: ["employees"],
     queryFn: fetchEmployees,
   });
@@ -77,6 +62,7 @@ const EmployeesList: React.FC = () => {
     },
   });
 
+  // Pagination logic
   const {
     currentPage,
     pageSize,
@@ -87,16 +73,19 @@ const EmployeesList: React.FC = () => {
     setPageSize,
   } = usePagination(employees);
 
+  // Edit Employee Handler
   const handleEdit = (employee: Employee) => {
     setSelectedEmployee(employee);
     setIsEditDialogOpen(true);
   };
 
+  // Delete Employee Handler
   const handleDelete = (employee: Employee) => {
     setSelectedEmployee(employee);
     setIsDeleteDialogOpen(true);
   };
 
+  // Confirm Employee Deletion
   const confirmDelete = () => {
     if (selectedEmployee?.employeeId) {
       deleteMutation.mutate(selectedEmployee.employeeId);
@@ -104,6 +93,7 @@ const EmployeesList: React.FC = () => {
     }
   };
 
+  // Loading and Error States
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Failed to load employees</div>;
 
@@ -148,11 +138,11 @@ const EmployeesList: React.FC = () => {
                     <TableCell>{employee.department ?? "-"}</TableCell>
                     <TableCell>{employee.email ?? "-"}</TableCell>
                     <TableCell>
-                     {employee.areaAccess?.map((access) => (
-  <Badge key={access.areaId} variant="outline" className="bg-primary/5">
-    {access.area?.name ?? `Area ${access.areaId}`}
-  </Badge>
-))}
+                      {employee.areaAccess?.map((access) => (
+                        <Badge key={access.areaId} variant="outline" className="bg-primary/5">
+                          {access.area?.name ?? `Area ${access.areaId}`}
+                        </Badge>
+                      ))}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -187,16 +177,16 @@ const EmployeesList: React.FC = () => {
         />
       )}
 
-<EmployeeForm
-  key={isEditDialogOpen ? selectedEmployee?.employeeId : "create"} 
-  isOpen={isEditDialogOpen || isCreateDialogOpen}
-  onClose={() => {
-    setIsCreateDialogOpen(false);
-    setIsEditDialogOpen(false);
-    setSelectedEmployee(null);
-  }}
-  employeeToEdit={isEditDialogOpen ? selectedEmployee : undefined}
-/>
+      <EmployeeForm
+        key={isEditDialogOpen ? selectedEmployee?.employeeId : "create"}
+        isOpen={isEditDialogOpen || isCreateDialogOpen}
+        onClose={() => {
+          setIsCreateDialogOpen(false);
+          setIsEditDialogOpen(false);
+          setSelectedEmployee(null);
+        }}
+        employeeToEdit={isEditDialogOpen ? selectedEmployee : undefined}
+      />
 
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}

@@ -34,10 +34,10 @@ const MealHistoryReport = () => {
   useEffect(() => {
     const fetchMealTypes = async () => {
       try {
-        const response = await axios.get('http://localhost:4000/api/mealTypes');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/mealTypes`);
         setMealTypes(response.data || []);
       } catch (error) {
-        console.error('Failed to fetch meal types:', error);
+        console.error("Failed to fetch meal types:", error);
       }
     };
     fetchMealTypes();

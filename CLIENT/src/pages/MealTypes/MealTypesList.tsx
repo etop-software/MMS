@@ -21,20 +21,23 @@ import MealTypeForm from "./MealTypeForm";
 import { MealType } from "@/types";
 import TablePagination from "@/components/common/TablePagination";
 import { usePagination } from "@/hooks/use-pagination";
-
 // === API Calls ===
+
+// Fetch Meal Types
 const fetchMealTypes = async (): Promise<MealType[]> => {
-  const res = await fetch("http://localhost:4000/api/mealTypes");
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/mealTypes`);
   if (!res.ok) throw new Error("Failed to fetch meal types");
   return res.json();
 };
 
+// Delete Meal Type
 const deleteMealType = async (id: number) => {
-  const res = await fetch(`http://localhost:4000/api/mealTypes/${id}`, {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/mealTypes/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete meal type");
 };
+
 
 const MealTypesList: React.FC = () => {
   const queryClient = useQueryClient();

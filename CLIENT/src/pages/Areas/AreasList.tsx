@@ -29,11 +29,11 @@ const AreasList: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
 
-  const fetchAreas = async () => {
-    const response = await axios.get("http://localhost:4000/api/areas");
-    return response.data;
-  };
-  // Updated useQuery hook with the correct object format
+ const fetchAreas = async () => {
+  const response = await axios.get(`${process.env.REACT_APP_API_URL}/areas`);
+  return response.data;
+};
+
   const { data: areasData, isLoading, isError } = useQuery({
     queryKey: ["areas"], // The query key
     queryFn: fetchAreas, // The function to fetch the data
@@ -49,30 +49,31 @@ const AreasList: React.FC = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (!selectedArea) return;
-  
-    const deleteArea = async (id: number) => {
-      const res = await fetch(`http://localhost:4000/api/areas/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete area");
-      return res.json();
-    };
-  
-    const mutation = useMutation({
-      mutationFn: () => deleteArea(selectedArea.id),
-      onSuccess: () => {
-        queryClient.invalidateQueries(["areas"]); 
-        setSelectedArea(null); 
-      },
-      onError: (error) => {
-        console.error("Error deleting area:", error);
-      },
+ const confirmDelete = () => {
+  if (!selectedArea) return;
+
+  const deleteArea = async (id: number) => {
+    const res = await fetch(`${process.env.REACT_APP_API_URL}/areas/${id}`, {
+      method: "DELETE",
     });
-  
-    mutation.mutate(); 
+    if (!res.ok) throw new Error("Failed to delete area");
+    return res.json();
   };
+
+  const mutation = useMutation({
+    mutationFn: () => deleteArea(selectedArea.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["areas"]);
+      setSelectedArea(null);
+    },
+    onError: (error) => {
+      console.error("Error deleting area:", error);
+    },
+  });
+
+  mutation.mutate();
+};
+
   const {
     currentPage,
     pageSize,

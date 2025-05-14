@@ -14,7 +14,7 @@ interface ExportParams {
 
 const exportMealHistory = async ({ type, filters }: ExportParams): Promise<Blob> => {
   const response = await axios.get(
-    `http://localhost:4000/api/meal-history-reports/export/${type}`,
+    `${process.env.REACT_APP_API_URL}/meal-history-reports/export/${type}`,
     {
       params: {
         meal_type_id: filters.mealTypeId || null,
@@ -28,6 +28,7 @@ const exportMealHistory = async ({ type, filters }: ExportParams): Promise<Blob>
   );
   return response.data;
 };
+
 
 export const useExportMealHistory = () => {
   return useMutation({

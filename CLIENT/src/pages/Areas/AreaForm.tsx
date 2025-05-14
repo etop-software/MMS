@@ -63,25 +63,26 @@ const AreaForm: React.FC<AreaFormProps> = ({
     }
   }, [areaToEdit, form]);
 
-  // Mutation for creating area
-  const createMutation = useMutation({
-    mutationFn: (data: FormValues) =>
-      axios.post("http://localhost:4000/api/areas", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["areas"] });
-      onClose();
-    },
-  });
+ // Mutation for creating area
+const createMutation = useMutation({
+  mutationFn: (data: FormValues) =>
+    axios.post(`${process.env.REACT_APP_API_URL}/areas`, data),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["areas"] });
+    onClose();
+  },
+});
 
-  // Mutation for updating area
-  const updateMutation = useMutation({
-    mutationFn: (data: { id: number; name: string; description?: string }) =>
-      axios.put(`http://localhost:4000/api/areas/${data.id}`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["areas"] });
-      onClose();
-    },
-  });
+// Mutation for updating area
+const updateMutation = useMutation({
+  mutationFn: (data: { id: number; name: string; description?: string }) =>
+    axios.put(`${process.env.REACT_APP_API_URL}/areas/${data.id}`, data),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["areas"] });
+    onClose();
+  },
+});
+
 
   const onSubmit = (values: FormValues) => {
     if (isEditing && areaToEdit) {

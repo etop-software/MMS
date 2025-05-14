@@ -99,22 +99,22 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
     }
   }, [employeeToEdit, isOpen]);
 
-  const fetchAreas = async () => {
-    const res = await axios.get("http://localhost:4000/api/areas");
-    return res.data;
-  };
-  const { data: areasData } = useQuery({ queryKey: ["areas"], queryFn: fetchAreas });
+const fetchAreas = async () => {
+  const res = await axios.get(`${process.env.REACT_APP_API_URL}/areas`);
+  return res.data;
+};
 
-  const fetchDevicesByArea = async (areaId: number) => {
-    try {
-      setLoadingDevices((prev) => [...prev, areaId]);
-      const res = await fetch(`http://localhost:4000/api/devices/devices?areaId=${areaId}`);
-      const data = await res.json();
-      setDevicesByArea((prev) => ({ ...prev, [areaId]: data }));
-    } finally {
-      setLoadingDevices((prev) => prev.filter((id) => id !== areaId));
-    }
-  };
+const fetchDevicesByArea = async (areaId: number) => {
+  try {
+    setLoadingDevices((prev) => [...prev, areaId]);
+    const res = await fetch(`${process.env.REACT_APP_API_URL}/devices/devices?areaId=${areaId}`);
+    const data = await res.json();
+    setDevicesByArea((prev) => ({ ...prev, [areaId]: data }));
+  } finally {
+    setLoadingDevices((prev) => prev.filter((id) => id !== areaId));
+  }
+};
+
 
   const toggleArea = (areaId: number) => {
     const updated = selectedAreas.includes(areaId)
@@ -162,25 +162,31 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
   };
 
   const mutation = useMutation({
-    mutationFn: async (data: Omit<Employee, "employeeId">) => {
-      const url = employeeToEdit
-        ? `http://localhost:4000/api/employees/employees/${employeeToEdit.employeeId}`
-        : "http://localhost:4000/api/employees/employees";
-      const method = employeeToEdit ? "PUT" : "POST";
+  mutationFn: async (data: Omit<Employee, "employeeId">) => {
+    // Using the environment variable for the base URL
+    const baseUrl = process.env.REACT_APP_API_URL;
+    if (!baseUrl) throw new Error("API URL is not defined in the environment variables.");
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to save employee");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      onClose();
-    },
-  });
+    const url = employeeToEdit
+      ? `${baseUrl}/employees/${employeeToEdit.employeeId}`
+      : `${baseUrl}/employees`;
+    
+    const method = employeeToEdit ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to save employee");
+    return res.json();
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["employees"] });
+    onClose();
+  },
+});
+
 
   const onSubmit = (values: FormValues) => {
     const invalidAreas = selectedAreas.filter(

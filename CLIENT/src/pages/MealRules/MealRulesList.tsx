@@ -29,10 +29,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Fetch devices by area function
 const fetchDevicesByArea = async (areaId: number): Promise<Device[]> => {
-  const res = await fetch(`http://localhost:4000/api/devices/devices?areaId=${areaId}`);
+  const res = await fetch(
+    `${process.env.REACT_APP_API_URL}/devices/devices?areaId=${areaId}`
+  );
   if (!res.ok) throw new Error("Failed to fetch devices");
   return res.json();
 };
+
 
 const MealRulesList: React.FC = () => {
   const queryClient = useQueryClient();
