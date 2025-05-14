@@ -103,6 +103,10 @@ const fetchAreas = async () => {
   const res = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
   return res.data;
 };
+const { data: areasData = [] } = useQuery({
+  queryKey: ['areas'],
+  queryFn: fetchAreas,
+});
 
 const fetchDevicesByArea = async (areaId: number) => {
   try {
