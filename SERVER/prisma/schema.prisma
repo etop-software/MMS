@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Employee {
+  id            Int            @id @default(autoincrement())
+  pin           Int            @unique
+  name          String
+  group         Int
+  privilege     Int
+  startTime     String
+  endTime       String
+  department    String?
+  phone         String?
+  email         String?
+  employeeId    Int?
+  password      String?
+  createdAt     DateTime       @default(now())
+
+  areaAccess    AreaAccess[]   // Relation to AreaAccess
+  deviceAccess  DeviceAccess[] // Relation to DeviceAccess
+}
+
+model AreaAccess {
+  id         Int       @id @default(autoincrement())
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  employeeId Int
+  area       Area      @relation(fields: [areaId], references: [id])
+  areaId     Int
+}
+
+model DeviceAccess {
+  id         Int       @id @default(autoincrement())
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  employeeId Int
+  device     Device    @relation(fields: [deviceId], references: [id])
+  deviceId   Int
+  area       Area      @relation(fields: [areaId], references: [id])
+  areaId     Int
+}
+
+model Device {
+  id          Int      @id @default(autoincrement())
+  deviceName  String
+  SN          String   @unique
+  areaId      Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  area        Area     @relation(fields: [areaId], references: [id])
+  mealRules   MealRule[] 
+  deviceAccess DeviceAccess[] // Relation to DeviceAccess
+}
+
+model Area {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String
+  mealRules   MealRule[]  // Links MealRule to Area
+  devices     Device[]    // Links Device to Area
+  areaAccess  AreaAccess[] // Links AreaAccess to Area
+  deviceAccess DeviceAccess[] // Links DeviceAccess to Area
+}
+
+model MealType {
+  mealTypeId  Int 
+  name        String
+  description String
+
+  mealRules   MealRule[]  // MealType is linked to MealRule, no need to link with Area directly
+
+  @@id([mealTypeId]) // Unique ID for MealType
+}
+
+model MealRule {
+  id          Int       @id @default(autoincrement())
+  mealTypeId  Int
+  areaId      Int
+  deviceId    Int?      // Optional field for linking to Device
+
+  startTime   String    // Format: HH:mm
+  endTime     String
+  days        String[]  // Days the rule applies (Postgres array)
+
+  mealType    MealType  @relation(fields: [mealTypeId], references: [mealTypeId])
+  area        Area      @relation(fields: [areaId], references: [id])
+  device      Device?   @relation(fields: [deviceId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([mealTypeId, areaId, deviceId])  // Ensure uniqueness across mealTypeId, areaId, and deviceId
+}
+
+model Logs {
+  id              Int      @id @default(autoincrement())
+  time            DateTime
+  pin             Int
+  cardno          Int
+  eventaddr       Int
+  event           Int
+  inoutstatus     Int
+  verifytype      Int
+  index           Int
+  sitecode        Int
+  linkid          Int
+  maskflag        Int
+  temperature     Int
+  convtemperature Int
+
+  createdAt       DateTime @default(now())
+}
