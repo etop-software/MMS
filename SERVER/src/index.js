@@ -47,7 +47,6 @@ app.use('/api', mealHistoryRoutes);
 app.use("/api", exportRoutes);
 app.use('/api/devices', deviceRoutes);
 
-
 require('./pushOps')(app);
 
 

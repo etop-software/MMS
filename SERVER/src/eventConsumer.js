@@ -13,25 +13,23 @@ eventEmitter.on("newEmployee", (command) => {
   console.log("✅ Received new employee command:", command);
 });
 
-// Event listener for 'newTimeZone'
 eventEmitter.on('newTimeZone', ({ command, SN }) => {
   latestData.command = command;  // Store the received command
   latestData.SN = SN;            // Store the received SN
 });
 
-// Event listener for 'assignTimeZoneCommand'
 eventEmitter.on("assignTimeZoneCommand", (command) => {
   latestData.command = command;  // Store the received command
   console.log("✅ Received new assignTimeZoneCommand:", command);
 });
 
-// Event listener for 'employeeSetupBatch'
-eventEmitter.on("employeeSetupBatch", (command) => {
-  latestData.command = command;  // Store the received command
+eventEmitter.on("employeeSetupBatch", ({ command, SN }) => {
+  latestData.command = command;  // Stores the full multi-line command string
+  latestData.SN = SN;            // Stores the device serial number
   console.log("✅ Received employeeSetupBatch command:", command);
 });
 
-// Function to set latest data
+
 const setLatestData = (command, SN) => {
   latestData.command = command;  // Update the command
   latestData.SN = SN;            // Update the SN

@@ -6,13 +6,15 @@ const { getLatestData, setLatestData } = require('./eventConsumer');
 const logService = require('./services/logService');
 
 module.exports = function (app) {
-  const registeredDevices = new Set(["CKJW204260179"]);
+  console.log("Initializing pushOps...");
+
+  const registeredDevices = new Set(["SYZ8243100723"]);
   const sessionStore = new Map();
   const registryCodes = new Map();
 
   app.get("/iclock/cdata", (req, res) => {
 
-
+    console.log("Received request for /iclock/cdata");  
     const { SN, options } = req.query;
 
     if (options !== "all") {

@@ -32,7 +32,6 @@ import { useAppContext } from "@/context/AppContext";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-// ... all imports remain the same
 
 const formSchema = z.object({
   name: z.string().min(1, "Employee name is required"),
@@ -168,13 +167,12 @@ const fetchDevicesByArea = async (areaId: number) => {
 
   const mutation = useMutation({
   mutationFn: async (data: Omit<Employee, "employeeId">) => {
-    // Using the environment variable for the base URL
     const baseUrl = import.meta.env.VITE_API_URL;
     if (!baseUrl) throw new Error("API URL is not defined in the environment variables.");
 
     const url = employeeToEdit
-      ? `${baseUrl}/employees/${employeeToEdit.employeeId}`
-      : `${baseUrl}/employees`;
+      ? `${baseUrl}/employees/employees/${employeeToEdit.employeeId}`
+      : `${baseUrl}/employees/employees`;
     
     const method = employeeToEdit ? "PUT" : "POST";
 
@@ -220,9 +218,7 @@ const fetchDevicesByArea = async (areaId: number) => {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-3">
-            {/* Fields omitted for brevity, keep your original UI field structure here */}
- <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Name */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -261,9 +257,6 @@ const fetchDevicesByArea = async (areaId: number) => {
                 )}
               />
 
-           
-
-              {/* Department */}
               <FormField
                 control={form.control}
                 name="department"

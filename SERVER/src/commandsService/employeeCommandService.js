@@ -1,47 +1,83 @@
 const { buildAuthorizationCommand } = require('../services/userAuthService');
 const eventEmitter = require('../eventEmitter');
 
-const buildAndEmitEmployeeCommands = async ({ pin, password, group, startTime, endTime, name, privilege, areaAccess, prisma }) => {
+const buildAndEmitEmployeeCommands = async ({
+  pin,
+  password,
+  group,
+  startTime,
+  endTime,
+  name,
+  privilege,
+  areaAccess,
+  prisma,
+  selectedDevices,
+}) => {
+  const commands = [];
+  let suffix = 1;
 
- const commands = [];
+  // 🔹 Flatten all selected device IDs
+  const allSelectedDeviceIds = Object.values(selectedDevices).flat();
 
-  const command1 = `C:${pin}:DATA UPDATE user CardNo=\tPin=${pin}\tPassword=${password}\tGroup=${group}\tStartTime=${startTime}\tEndTime=${endTime}\tName=${name}\tPrivilege=${privilege}`;
-  commands.push(command1);
-
-  const mealRuleIds = await prisma.mealRule.findMany({
-    where: { areaId: { in: areaAccess } },
-    select: { mealTypeId: true },
+  // 1️⃣ Get device SNs
+  const devices = await prisma.device.findMany({
+    where: { id: { in: allSelectedDeviceIds } },
+    select: { id: true, SN: true },
   });
 
-  const mealRuleIdsArray = mealRuleIds.map((rule) => rule.mealTypeId);
-
-  let suffix = 1;
-  for (const timezoneId of mealRuleIdsArray) {
-    const cmdId = Number(`${pin}${suffix}`);
-    const authData = {
-      cmdId,
-      pin,
-      timezoneId,
-      doorId: 1,
-      devId: 1,
-      startTime: 803520000,
-      endTime: 836860799,
-    };
-
-    const command = buildAuthorizationCommand(authData);
-    commands.push(command);
-    suffix++;
+  // 2️⃣ Send base command to all selected devices
+  for (const device of devices) {
+    const baseCommand = `C:${pin}:DATA UPDATE user CardNo=\tPin=${pin}\tPassword=${password}\tGroup=${group}\tStartTime=${startTime}\tEndTime=${endTime}\tName=${name}\tPrivilege=${privilege}`;
+    commands.push({ SN: device.SN, command: baseCommand });
   }
 
-  const joined = commands.join('\n');
+ 
+  const mealRules = await prisma.mealRule.findMany({
+    where: {
+      deviceId: { in: allSelectedDeviceIds },
+    },
+    select: {
+      mealTypeId: true,
+      deviceId: true,
+    },
+  });
 
-  eventEmitter.emit('employeeSetupBatch', joined);
+  // 4️⃣ Create userauthorize command per (mealRule, device)
+  for (const rule of mealRules) {
+    const cmdId = Number(`${pin}${suffix++}`);
+    const authCommand = buildAuthorizationCommand({
+      cmdId,
+      pin,
+      timezoneId: rule.mealTypeId,
+      doorId: 1,
+      devId: rule.deviceId,
+      startTime: 803520000,
+      endTime: 836860799,
+    });
 
-  return joined;
+    // get SN for device
+    const deviceSN = devices.find((d) => d.id === rule.deviceId)?.SN;
+    if (deviceSN) {
+      commands.push({ SN: deviceSN, command: authCommand });
+    }
+  }
+
+  // 5️⃣ Group by SN and emit
+  const commandsBySN = {};
+  for (const { SN, command } of commands) {
+    if (!commandsBySN[SN]) commandsBySN[SN] = [];
+    commandsBySN[SN].push(command);
+  }
+
+ for (const [SN, cmds] of Object.entries(commandsBySN)) {
+  const joined = cmds.join('\n');
+  eventEmitter.emit('employeeSetupBatch', { SN, command: joined });
+}
+
+
+  return commandsBySN;
 };
 
-
-
 module.exports = {
-  buildAndEmitEmployeeCommands
+  buildAndEmitEmployeeCommands,
 };

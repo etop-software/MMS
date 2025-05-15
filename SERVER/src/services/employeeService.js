@@ -230,7 +230,7 @@ const deleteEmployee = async (employeeId) => {
       throw new Error('Employee not found');
     }
 
-    eventEmitter.emit('employeeDeletion', `Employee with ID ${employeeId} is being deleted.`);
+  //  eventEmitter.emit('employeeDeletion', `Employee with ID ${employeeId} is being deleted.`);
 
     // Delete related AreaAccess and DeviceAccess records first
     await prisma.areaAccess.deleteMany({

@@ -10,13 +10,12 @@ const updateMealRule = async (req, res) => {
   const { mealTypeId, startTime, endTime, days, areaId, deviceId } = req.body;
 
   try {
-    // Ensure you have valid deviceId if it's provided
     const mealRule = await prisma.mealRule.upsert({
       where: {
-        mealTypeId_areaId_deviceId: { // Use the composite key for upsert
+        mealTypeId_areaId_deviceId: {
           mealTypeId,
           areaId,
-          deviceId, // This ensures we are updating/creating a rule specific to the mealType, area, and device
+          deviceId, 
         }
       },
       update: {
@@ -27,7 +26,7 @@ const updateMealRule = async (req, res) => {
       create: {
         mealTypeId,
         areaId,
-        deviceId, // Include deviceId in the create operation
+        deviceId, 
         startTime,
         endTime,
         days
@@ -41,11 +40,11 @@ const updateMealRule = async (req, res) => {
 
    const device = await prisma.device.findUnique({
       where: {
-        id: deviceId, // Ensure the deviceId exists in your device table
+        id: deviceId, 
       }
     });
 
-    // Assuming the device object has a field 'SN' for Serial Number
+
     const SN = device ? device.SN : null;
 
     console.log('SN:', SN);
