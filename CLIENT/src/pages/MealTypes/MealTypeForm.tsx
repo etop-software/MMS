@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MealType } from "@/types";
-
+import { Toaster as Sonner, toast } from "sonner"
 // ✅ Schema
 const formSchema = z.object({
   name: z.string().min(1, "Meal type name is required"),
@@ -71,24 +71,33 @@ const MealTypeForm: React.FC<MealTypeFormProps> = ({
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: createMealType,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mealTypes"] });
-      onClose();
-    },
-    onError: (err) => console.error(err),
-  });
+const createMutation = useMutation({
+  mutationFn: createMealType,
+  onSuccess: () => {
+    toast.success("Meal type created successfully");
+    queryClient.invalidateQueries({ queryKey: ["mealTypes"] });
+    onClose();
+  },
+  onError: (err: any) => {
+    toast.error("Failed to create meal type");
+    console.error(err);
+  },
+});
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: FormValues }) =>
-      updateMealType(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mealTypes"] });
-      onClose();
-    },
-    onError: (err) => console.error(err),
-  });
+const updateMutation = useMutation({
+  mutationFn: ({ id, data }: { id: number; data: FormValues }) =>
+    updateMealType(id, data),
+  onSuccess: () => {
+    toast.success("Meal type updated successfully");
+    queryClient.invalidateQueries({ queryKey: ["mealTypes"] });
+    onClose();
+  },
+  onError: (err: any) => {
+    toast.error("Failed to update meal type");
+    console.error(err);
+  },
+});
+
 
   const onSubmit = (values: FormValues) => {
     if (isEditing && mealTypeToEdit) {

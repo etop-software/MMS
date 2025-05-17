@@ -6,15 +6,16 @@ const deviceController = require('./../controllers/deviceController');
 router.get('/devices', deviceController.getDevicesByArea);
 
 // Get all devices (optional)
-router.get('/devices/all', deviceController.getAllDevices);
+router.get('/', deviceController.getAllDevices);
 
 // Create a new device
-router.post('/devices', deviceController.createDevice);
+router.post('/', deviceController.createDevice);
 
 // Update an existing device
-router.put('/devices', deviceController.updateDevice);
+router.put('/:id', deviceController.updateDevice);
+
 
 // Delete a device
-router.delete('/devices/:deviceId', deviceController.deleteDevice);
+router.delete('/:deviceId', deviceController.deleteDevice);
 
 module.exports = router;

@@ -15,6 +15,7 @@ const addEmployee = async (employeeData) => {
     department,
     phone,
     email,
+    RFID,
     areaAccess = [],
     selectedDevices = {}
   } = employeeData;
@@ -30,6 +31,7 @@ const addEmployee = async (employeeData) => {
   privilege,
   areaAccess,
   prisma,
+  RFID,
   selectedDevices
 });
 
@@ -46,6 +48,8 @@ const addEmployee = async (employeeData) => {
       phone,
       email,
       password,
+      RFID
+,
 
       areaAccess: {
         create: areaAccess.map((areaId) => ({
@@ -81,6 +85,7 @@ const updateEmployee = async (employeeId, updatedData) => {
       department,
       phone,
       email,
+      RFID,
       areaAccess,
       selectedDevices,
     } = updatedData;
@@ -93,38 +98,21 @@ const updateEmployee = async (employeeId, updatedData) => {
       throw new Error("Employee not found");
     }
 
-    const command1 = `C:${pin}:DATA UPDATE user CardNo=\tPin=${pin}\tPassword=${password}\tGroup=${group}\tStartTime=${startTime}\tEndTime=${endTime}\tName=${name}\tPrivilege=${privilege}`;
-    const allCommands = [command1];
+     await buildAndEmitEmployeeCommands({
+  pin,
+  password,
+  group,
+  startTime,
+  endTime,
+  name,
+  privilege,
+  areaAccess,
+  prisma,
+  RFID,
+  selectedDevices
+});
 
-    const mealRuleIds = await prisma.mealRule.findMany({
-      where: {
-        areaId: { in: areaAccess },
-      },
-      select: {
-        mealTypeId: true,
-      },
-    });
-
-    const mealRuleIdsArray = mealRuleIds.map((rule) => rule.mealTypeId);
-
-    let suffix = 1;
-    for (const timezoneId of mealRuleIdsArray) {
-      const cmdId = Number(`${pin}${suffix}`);
-      const authData = {
-        cmdId,
-        pin,
-        timezoneId,
-        doorId: 1,
-        devId: 1,
-        startTime: 803520000,
-        endTime: 836860799,
-      };
-      const command2 = buildAuthorizationCommand(authData);
-      allCommands.push(command2);
-      suffix++;
-    }
-
-    eventEmitter.emit("employeeSetupBatch", allCommands.join("\n"));
+    
 
     await prisma.areaAccess.deleteMany({
       where: { employeeId: employee.id },
@@ -163,6 +151,8 @@ const updateEmployee = async (employeeId, updatedData) => {
         privilege,
         department,
         phone,
+        email,
+        RFID,
         email,
       },
     });
@@ -208,13 +198,32 @@ const getEmployeeById = async (employeeId) => {
   try {
     const employee = await prisma.employee.findUnique({
       where: {
-        pin: employeeId,
+        pin: Number(employeeId),
       },
+      include: {
+        areaAccess: {
+          include: {
+            area: true,
+          },
+        },
+        deviceAccess: {
+          include: {
+            device: {
+              include: {
+                area: true,
+              },
+            },
+          },
+        },
+      }
     });
+    if (!employee) {
+      throw new Error(`Employee with pin ${employeeId} not found`);
+    }
     return employee;
   } catch (error) {
-    console.error('Error fetching employee by ID:', error);
-    throw error;
+    console.error('Error fetching employee:', error);
+    throw error; // Rethrow for caller to handle
   }
 };
 

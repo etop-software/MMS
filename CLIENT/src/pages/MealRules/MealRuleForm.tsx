@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { MealRule, MealType, Area, Device } from "@/types";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Toaster as Sonner, toast } from "sonner"
 
 const daysOfWeek = [
   { id: "Mon", label: "Monday" },
@@ -147,18 +148,29 @@ const fetchDevicesByArea = async (areaId: number) => {
   };
 
 const updateMealRule = async (payload: FormValues & { days: string[] }) => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/mealRules/updateMealRule`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/mealRules/updateMealRule`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
 
-  if (!response.ok) throw new Error("Failed to update meal rule");
-  return response.json();
+    if (!response.ok) throw new Error("Failed to update meal rule");
+
+    const data = await response.json();
+
+    toast.success("Meal rule updated successfully!");
+
+    return data;
+  } catch (error) {
+    toast.error("Error updating meal rule");
+    throw error;
+  }
 };
+
 
 
   const mutation = useMutation({

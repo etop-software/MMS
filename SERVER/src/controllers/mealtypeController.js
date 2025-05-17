@@ -26,9 +26,11 @@ exports.getOne = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { mealTypeId, areaId } = req.params;
+  const { mealTypeId} = req.params;
+
+
   try {
-    const result = await service.updateMealType(mealTypeId, areaId, req.body);
+    const result = await service.updateMealType(mealTypeId, req.body);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

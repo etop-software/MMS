@@ -1,4 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
+ const { PrismaClient } = require('@prisma/client');
+
+
 const prisma = new PrismaClient();
 
 // Controller for devices
@@ -26,13 +28,35 @@ const deviceController = {
     }
   },
 
-  // Get all devices (optional, if needed)
   getAllDevices: async (req, res) => {
     try {
-      const devices = await prisma.device.findMany();
+      const devices = await prisma.device.findMany({
+        select: {
+          id: true,
+          deviceName: true,
+          SN: true,
+          transactionCount: true,
+          ipAddress: true,
+          userCount: true,
+          fpCount: true,
+          faceCount: true,
+          updatedAt: true,
+          area: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          deviceName: 'asc',
+        },
+      });
+
+   
       return res.json(devices);
     } catch (error) {
-      console.error(error);
+      console.error('Error fetching all devices:', error);
       return res.status(500).json({ error: 'Error fetching all devices' });
     }
   },
@@ -60,28 +84,34 @@ const deviceController = {
   },
 
   // Update an existing device
-  updateDevice: async (req, res) => {
-    const { deviceId, name, areaId } = req.body;
+// Update a device by ID
+updateDevice: async (req, res) => {
+  const deviceId = parseInt(req.params.id);
+  const { deviceName, areaId } = req.body;
 
-    if (!deviceId || !name || !areaId) {
-      return res.status(400).json({ error: 'Device ID, Name, and Area ID are required' });
-    }
+  if (!deviceName || !areaId) {
+    return res.status(400).json({ error: 'Device name and Area ID are required' });
+  }
 
-    try {
-      const updatedDevice = await prisma.device.update({
-        where: { id: parseInt(deviceId) },
-        data: {
-          name,
-          areaId: parseInt(areaId),
-        },
-      });
+  try {
+    const updatedDevice = await prisma.device.update({
+      where: { id: deviceId },
+      data: {
+        deviceName,
+        areaId: parseInt(areaId),
+      },
+      include: {
+        area: true,
+      },
+    });
 
-      return res.json(updatedDevice);
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: 'Error updating device' });
-    }
-  },
+    return res.json(updatedDevice);
+  } catch (error) {
+    console.error('Error updating device:', error);
+    return res.status(500).json({ error: 'Error updating device' });
+  }
+},
+
 
   // Delete a device
   deleteDevice: async (req, res) => {

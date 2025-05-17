@@ -41,18 +41,16 @@ const getMealType = (mealTypeId, areaId) => {
     },
   });
 };
-
-const updateMealType = (mealTypeId, areaId, data) => {
+const updateMealType = (mealTypeId, data) => {
+ 
   return prisma.mealType.update({
     where: {
-      mealTypeId_areaId: {
-        mealTypeId: parseInt(mealTypeId),
-        areaId: parseInt(areaId),
-      },
+      mealTypeId: parseInt(mealTypeId),
     },
     data,
   });
 };
+
 
 const deleteMealType = (mealTypeId, areaId) => {
   return prisma.mealType.delete({

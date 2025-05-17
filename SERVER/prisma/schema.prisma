@@ -17,17 +17,18 @@ model Employee {
   id            Int            @id @default(autoincrement())
   pin           Int            @unique
   name          String
-  group         Int
-  privilege     Int
-  startTime     String
-  endTime       String
+  group         Int?
+  privilege     Int?
+  startTime   DateTime?
+  endTime     DateTime?
   department    String?
   phone         String?
   email         String?
   employeeId    Int?
   password      String?
   createdAt     DateTime       @default(now())
-
+  RFID          String?
+  
   areaAccess    AreaAccess[]   // Relation to AreaAccess
   deviceAccess  DeviceAccess[] // Relation to DeviceAccess
 }
@@ -51,17 +52,25 @@ model DeviceAccess {
 }
 
 model Device {
-  id          Int      @id @default(autoincrement())
-  deviceName  String
-  SN          String   @unique
-  areaId      Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                Int           @id @default(autoincrement())
+  deviceName        String
+  SN                String        @unique
+  areaId            Int
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
-  area        Area     @relation(fields: [areaId], references: [id])
-  mealRules   MealRule[] 
-  deviceAccess DeviceAccess[] // Relation to DeviceAccess
+  transactionCount  Int?          // <-- made optional
+  ipAddress         String?       // <-- made optional
+  userCount         Int?
+  fpCount           Int?
+  faceCount         Int?
+
+  area              Area          @relation(fields: [areaId], references: [id])
+  mealRules         MealRule[]
+  deviceAccess      DeviceAccess[]
 }
+
+
 
 model Area {
   id          Int         @id @default(autoincrement())

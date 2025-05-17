@@ -4,18 +4,21 @@ const prisma = new PrismaClient(); // adjust path as needed
 const crypto = require("crypto");
 const { getLatestData, setLatestData } = require('./eventConsumer');
 const logService = require('./services/logService');
+const { Console } = require("console");
 
 module.exports = function (app) {
-  console.log("Initializing pushOps...");
 
-  const registeredDevices = new Set(["SYZ8243100723"]);
+  const registeredDevices = new Set([""]);
   const sessionStore = new Map();
   const registryCodes = new Map();
 
   app.get("/iclock/cdata", (req, res) => {
 
-    console.log("Received request for /iclock/cdata");  
     const { SN, options } = req.query;
+
+    console.log(req.query);
+
+
 
     if (options !== "all") {
       return res.status(400).send("Invalid options parameter");
@@ -58,25 +61,21 @@ module.exports = function (app) {
 
   app.post("/iclock/registry", (req, res) => {
     const { SN } = req.query;
-    console.log('MASSS1',req.query);
- 
+    console.log(req.query);
+
 
     if (!registeredDevices.has(SN)) {
       registeredDevices.add(SN);
-      console.log(`New device added: ${SN}`);
     }
 
     if (!registryCodes.has(SN)) {
       const registryCode = generateRegistryCode();
       registryCodes.set(SN, registryCode);
-      console.log(`Generated RegistryCode for device: ${SN}`);
     }
 
     const registryCode = registryCodes.get(SN);
-    console.log(`RegistryCode for ${SN}: ${registryCode}`);
     const responseBody = `RegistryCode=${registryCode}`;
     setStandardHeaders(res, Buffer.byteLength(responseBody));
-    console.log("Response sent:", responseBody);
     res.send(responseBody);
   });
 
@@ -121,7 +120,10 @@ module.exports = function (app) {
     res.send(responseBody);
   });
 
-  app.post("/iclock/cdata",async  (req, res) => {
+  app.post("/iclock/cdata", async (req, res) => {
+    console.log(req.query);
+    console.log(req.rawBody.toString());
+
     const { SN, table, tablename } = req.query;
 
     const body = req.rawBody.toString();
@@ -185,7 +187,7 @@ module.exports = function (app) {
 
       const parsedData = parseDataToObject(body);
 
-      console.log("Parsed RTLOG data:", parsedData);  
+      console.log("Parsed RTLOG data:", parsedData);
 
       try {
         const log = await logService.createLog(parsedData);
@@ -194,69 +196,111 @@ module.exports = function (app) {
       }
 
 
-    } else {
-      console.warn(`Unknown table type: ${table}`);
+    } else if (table.toUpperCase() === "OPTIONS") {
+      const parsedData = parseDataToObject1(body);
+
+      const SN = req.query.SN
+      const defaultAreaId = 1;
+      let defaultArea = await prisma.area.findUnique({
+        where: { id: defaultAreaId },
+      });
+
+      if (!defaultArea) {
+
+        defaultArea = await prisma.area.create({
+          data: {
+            id: defaultAreaId,
+            name: 'Default Area',
+            description: 'Default Area Description',
+          },
+        });
+      }
+      const device = await prisma.device.upsert({
+        where: { SN },
+        update: {
+          transactionCount: parseInt(parsedData.TransactionCount || '0'),
+          ipAddress: parsedData.IPAddress || '',
+          userCount: parseInt(parsedData.UserCount || '0'),
+          fpCount: parseInt(parsedData.FPCount || '0'),
+          faceCount: parseInt(parsedData.FaceCount || '0'),
+          updatedAt: new Date()
+        },
+        create: {
+          SN,
+          deviceName: 'AutoAdd',
+          transactionCount: parseInt(parsedData.TransactionCount || '0'),
+          ipAddress: parsedData.IPAddress || '',
+          userCount: parseInt(parsedData.UserCount || '0'),
+          fpCount: parseInt(parsedData.FPCount || '0'),
+          faceCount: parseInt(parsedData.FaceCount || '0'),
+          area: {
+            connect: { id: defaultAreaId },
+          },
+        }
+      });
+
+
+
     }
 
     setStandardHeaders(res, Buffer.byteLength(responseBody));
     res.send(responseBody);
   });
-  
 
-//   app.get('/iclock/getrequest', async (req, res) => {
 
-//     const { SN } = req.query;
-//    const updatedDevice = await prisma.device.update({
-//   where: { SN: SN },
-//   data: {
-//     updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
-//   },
-// });
+  //   app.get('/iclock/getrequest', async (req, res) => {
 
-// const { {command || 'OK' } , SN } = getLatestData();
-//   // const command = getLatestCommand() || 'OK'; 
+  //     const { SN } = req.query;
+  //    const updatedDevice = await prisma.device.update({
+  //   where: { SN: SN },
+  //   data: {
+  //     updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
+  //   },
+  // });
 
-// //console.log(`Command to send: ${command}`);
-//  //const command = 'C:337:DATA DELETE user Pin=1002N';
-// //const command =`C:1001:SET OPTIONS Door1CloseAndLock=0,WiegandIDIn=1,Door1Drivertime=1,Door1SensorType=1,Door1Detectortime=1,Door1Intertime=1,SlaveIOState=0,Door1VerifyType=0,Reader1IOState=1,Door1MultiCardInterTime=1,Door1ValidTZ=1,Door1SupperPassWord=,WiegandID=1,Door1ForcePassWord=,Door1KeepOpenTimeZone=1`;
-//     res.send(command);
-//   });
+  // const { {command || 'OK' } , SN } = getLatestData();
+  //   // const command = getLatestCommand() || 'OK'; 
 
-app.get('/iclock/getrequest', async (req, res) => {
-  const { SN } = req.query;
+  // //console.log(`Command to send: ${command}`);
+  //  //const command = 'C:337:DATA DELETE user Pin=1002N';
+  // //const command =`C:1001:SET OPTIONS Door1CloseAndLock=0,WiegandIDIn=1,Door1Drivertime=1,Door1SensorType=1,Door1Detectortime=1,Door1Intertime=1,SlaveIOState=0,Door1VerifyType=0,Reader1IOState=1,Door1MultiCardInterTime=1,Door1ValidTZ=1,Door1SupperPassWord=,WiegandID=1,Door1ForcePassWord=,Door1KeepOpenTimeZone=1`;
+  //     res.send(command);
+  //   });
 
-  await prisma.device.update({
-    where: { SN },
-    data: {
-      updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
-    },
+  app.get('/iclock/getrequest', async (req, res) => {
+
+    console.log();
+    const { SN } = req.query;
+
+    await prisma.device.update({
+      where: { SN },
+      data: {
+        updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
+      },
+    });
+
+    const { command, SN: lastSN } = getLatestData();
+    const finalCommand = command || 'OK';
+    res.send(finalCommand);
   });
 
-  const { command, SN: lastSN } = getLatestData();
-  const finalCommand = command || 'OK';
 
-  console.log(`➡️ Sending command: ${finalCommand}`);
+  app.post("/iclock/devicecmd", express.text({ type: "*/*" }), (req, res) => {
+    const parsed = Object.fromEntries(new URLSearchParams(req.rawBody));
+    const returnCode = parsed.Return;
+    const SN = parsed.SN || null;
 
-  res.send(finalCommand);
-});
+    console.log(`📥 Device response: ${req.rawBody}`);
 
+    if (returnCode === '0') {
 
- app.post("/iclock/devicecmd", express.text({ type: "*/*" }), (req, res) => {
-  const parsed = Object.fromEntries(new URLSearchParams(req.rawBody));
-  const returnCode = parsed.Return;
-  const SN = parsed.SN || null;
+      setLatestData(command = `OK`);
 
-  console.log(`📥 Device response: ${req.rawBody}`);
+      return res.send('OK');
+    }
 
-  if (returnCode === '0') {
-
-    setLatestData(command=`OK`);
-   
-    return res.send('OK');
-  }
-
-  res.send('UNKNOWN');
-});
+    res.send('UNKNOWN');
+  });
 
 
 };
@@ -273,7 +317,23 @@ function parseDataToObject(data) {
 
   return parsedData;
 }
+function parseDataToObject1(body) {
+  const result = {};
 
+  // Split by commas first to separate key-value pairs
+  const pairs = body.split(',');
+
+  for (const pair of pairs) {
+    const [key, value] = pair.split('=');
+
+    // Skip if key starts with ~ or if no key/value
+    if (!key || key.startsWith('~')) continue;
+
+    result[key] = value !== undefined ? value : '';
+  }
+
+  return result;
+}
 function generateRandomCode(length = 32) {
   return crypto
     .randomBytes(Math.ceil(length / 2))

@@ -1,10 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient(); // adjust path as needed
+const prisma = new PrismaClient();
 const mealRuleService = require('../services/mealRuleService');
 const eventEmitter = require('../eventEmitter');
 const { generateTimezoneCommandService } = require('../services/timezoneService');
+const NodeCache = require('node-cache');
 
-
+const cache = new NodeCache({ stdTTL: 300 }); // Cache valid for 5 minutes
 
 const updateMealRule = async (req, res) => {
   const { mealTypeId, startTime, endTime, days, areaId, deviceId } = req.body;
@@ -15,7 +16,7 @@ const updateMealRule = async (req, res) => {
         mealTypeId_areaId_deviceId: {
           mealTypeId,
           areaId,
-          deviceId, 
+          deviceId,
         }
       },
       update: {
@@ -26,7 +27,7 @@ const updateMealRule = async (req, res) => {
       create: {
         mealTypeId,
         areaId,
-        deviceId, 
+        deviceId,
         startTime,
         endTime,
         days
@@ -38,18 +39,19 @@ const updateMealRule = async (req, res) => {
 
     const command = generateTimezoneCommandService(cmdId, timezoneId, intervalsByDay);
 
-   const device = await prisma.device.findUnique({
+    const device = await prisma.device.findUnique({
       where: {
-        id: deviceId, 
+        id: deviceId,
       }
     });
 
-
     const SN = device ? device.SN : null;
-
     console.log('SN:', SN);
 
     eventEmitter.emit('newTimeZone', { command, SN });
+
+    // Invalidate cache after update
+    cache.del('mealRules');
 
     return res.json({
       message: `Meal rule Inserted/updated`,
@@ -63,10 +65,20 @@ const updateMealRule = async (req, res) => {
   }
 };
 
-
 const getMealRules = async (req, res) => {
+  const cacheKey = 'mealRules';
+
   try {
-    // Fetch meal rules along with related mealType and area
+    const cachedRules = cache.get(cacheKey);
+
+    if (cachedRules) {
+      return res.json({
+        message: 'Meal rules fetched from cache',
+        data: cachedRules,
+        cached: true
+      });
+    }
+
     const mealRules = await prisma.mealRule.findMany({
       include: {
         mealType: true,
@@ -79,9 +91,12 @@ const getMealRules = async (req, res) => {
       return res.status(404).json({ message: 'No meal rules found' });
     }
 
+    // Cache the result
+    cache.set(cacheKey, mealRules);
+
     return res.json({
-      message: 'Meal rules fetched successfully',
-      data: mealRules
+      message: 'Meal rules fetched successfully from database',
+      data: mealRules,
     });
 
   } catch (error) {
@@ -89,7 +104,6 @@ const getMealRules = async (req, res) => {
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
 
 module.exports = {
   updateMealRule,

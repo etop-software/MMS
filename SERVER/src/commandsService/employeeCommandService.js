@@ -12,22 +12,21 @@ const buildAndEmitEmployeeCommands = async ({
   areaAccess,
   prisma,
   selectedDevices,
+  RFID
 }) => {
   const commands = [];
   let suffix = 1;
 
-  // 🔹 Flatten all selected device IDs
+
   const allSelectedDeviceIds = Object.values(selectedDevices).flat();
 
-  // 1️⃣ Get device SNs
   const devices = await prisma.device.findMany({
     where: { id: { in: allSelectedDeviceIds } },
     select: { id: true, SN: true },
   });
 
-  // 2️⃣ Send base command to all selected devices
   for (const device of devices) {
-    const baseCommand = `C:${pin}:DATA UPDATE user CardNo=\tPin=${pin}\tPassword=${password}\tGroup=${group}\tStartTime=${startTime}\tEndTime=${endTime}\tName=${name}\tPrivilege=${privilege}`;
+    const baseCommand = `C:${pin}:DATA UPDATE user CardNo=${RFID}\tPin=${pin}\tPassword=${password}\tGroup=${group}\tStartTime=${startTime}\tEndTime=${endTime}\tName=${name}\tPrivilege=${privilege}`;
     commands.push({ SN: device.SN, command: baseCommand });
   }
 
@@ -42,7 +41,6 @@ const buildAndEmitEmployeeCommands = async ({
     },
   });
 
-  // 4️⃣ Create userauthorize command per (mealRule, device)
   for (const rule of mealRules) {
     const cmdId = Number(`${pin}${suffix++}`);
     const authCommand = buildAuthorizationCommand({
@@ -55,14 +53,13 @@ const buildAndEmitEmployeeCommands = async ({
       endTime: 836860799,
     });
 
-    // get SN for device
+
     const deviceSN = devices.find((d) => d.id === rule.deviceId)?.SN;
     if (deviceSN) {
       commands.push({ SN: deviceSN, command: authCommand });
     }
   }
 
-  // 5️⃣ Group by SN and emit
   const commandsBySN = {};
   for (const { SN, command } of commands) {
     if (!commandsBySN[SN]) commandsBySN[SN] = [];

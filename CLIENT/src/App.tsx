@@ -14,6 +14,7 @@ import MealTypesList from "./pages/MealTypes/MealTypesList";
 import MealRulesList from "./pages/MealRules/MealRulesList";
 import MealRestrictionsList from "./pages/MealRestrictions/MealRestrictionsList";
 import MealHistoryReport from "./pages/reports/MealHistoryReport";
+import DeviceList from "./pages/Devices/DeviceList";
 import { AppProvider } from "./context/AppContext";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/meal-rules" element={<MealRulesList />} />
               <Route path="/meal-restrictions" element={<MealRestrictionsList />} />
               <Route path="/meal-history" element={<MealHistoryReport />} />
+              <Route path="/devices" element={<DeviceList />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
