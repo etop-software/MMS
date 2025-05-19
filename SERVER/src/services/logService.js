@@ -4,9 +4,10 @@ const prisma = new PrismaClient();
 class LogService {
   async createLog(data) {
     try {
-
+       console.log("Creating log:", data);
         const date = new Date(data.time);
         const adjustedDate = new Date(date.setHours(date.getHours() + 4));
+        console.log("Adjusted date:", adjustedDate);
   
       if (data.pin === '0') {
         console.warn("Skipping log insertion: pin is '0'");
