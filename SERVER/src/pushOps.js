@@ -268,16 +268,23 @@ module.exports = function (app) {
   //   });
 
   app.get('/iclock/getrequest', async (req, res) => {
-
-    console.log();
     const { SN } = req.query;
 
-    await prisma.device.update({
+    const existingDevice = await prisma.device.findUnique({
       where: { SN },
-      data: {
-        updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
-      },
     });
+
+    if (existingDevice) {
+      await prisma.device.update({
+        where: { SN },
+        data: {
+          updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // Add 4 hours
+        },
+      });
+      console.log("Device updated");
+    } else {
+      console.log("Device not found, no update performed");
+    }
 
     const { command, SN: lastSN } = getLatestData();
     const finalCommand = command || 'OK';

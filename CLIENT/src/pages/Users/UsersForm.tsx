@@ -13,16 +13,16 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
-// Schema definition
 const userFormSchema = z.object({
   user_id: z.string().min(1, "User ID is required"),
   username: z.string().min(1, "Username is required"),
@@ -33,10 +33,8 @@ const userFormSchema = z.object({
   areaAccess: z.array(z.string()).optional(),
 });
 
-// Form data type
 type UserFormData = z.infer<typeof userFormSchema>;
 
-// Props definition
 interface UserFormProps {
   open: boolean;
   onClose: () => void;
@@ -46,14 +44,12 @@ interface UserFormProps {
     usertype: "Admin" | "NormalUser";
     areaAccess?: string[];
   } | null;
-  onSubmit: (data: UserFormData) => void;
 }
 
 const UserForm: React.FC<UserFormProps> = ({
   open,
   onClose,
   selectedUser,
-  onSubmit,
 }) => {
   const form = useForm<UserFormData>({
     resolver: zodResolver(userFormSchema),
@@ -66,6 +62,8 @@ const UserForm: React.FC<UserFormProps> = ({
     },
   });
 
+  const queryClient = useQueryClient();
+
   // Fetch areas
   const fetchAreas = async () => {
     const response = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
@@ -77,6 +75,33 @@ const UserForm: React.FC<UserFormProps> = ({
     queryFn: fetchAreas,
   });
 
+const userMutation = useMutation({
+  mutationFn: (data: UserFormData) => {
+    const payload = {
+      ...data,
+      areaAccess: data.areaAccess?.map(Number), // 🔁 convert string[] to number[]
+    };
+
+    if (selectedUser) {
+      // Update user
+      return axios.put(`${import.meta.env.VITE_API_URL}/users/${data.user_id}`, payload);
+    } else {
+      // Add user
+      return axios.post(`${import.meta.env.VITE_API_URL}/users`, payload);
+    }
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    onClose();
+  },
+  onError: (error) => {
+    console.error("Mutation error:", error);
+    // You can show a toast or alert here
+  },
+});
+
+
+
   // Populate form on edit
   useEffect(() => {
     if (selectedUser) {
@@ -85,12 +110,17 @@ const UserForm: React.FC<UserFormProps> = ({
         username: selectedUser.username,
         password: "",
         userType: selectedUser.usertype,
-        areaAccess: selectedUser.areaAccess ?? [],
+        areaAccess: selectedUser.areaAccess?.map(String) ?? [],
       });
     } else {
       form.reset();
     }
   }, [selectedUser]);
+
+  // Submit handler
+  const handleSubmit = (data: UserFormData) => {
+    userMutation.mutate(data);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -100,7 +130,7 @@ const UserForm: React.FC<UserFormProps> = ({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pt-2">
             <FormField
               control={form.control}
               name="user_id"
@@ -160,52 +190,92 @@ const UserForm: React.FC<UserFormProps> = ({
               )}
             />
 
-            {/* Area Access Checkboxes */}
             <FormField
               control={form.control}
               name="areaAccess"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Area Access</FormLabel>
-                  {isAreasLoading ? (
-                    <p className="text-sm text-muted-foreground">Loading areas...</p>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {areasData?.map((area: any) => (
-                        <label key={area.id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            value={area.id}
-                            checked={form.watch("areaAccess")?.includes(area.id)}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              const current = form.getValues("areaAccess") || [];
-                              if (checked) {
-                                form.setValue("areaAccess", [...current, area.id]);
-                              } else {
-                                form.setValue(
-                                  "areaAccess",
-                                  current.filter((id: string) => id !== area.id)
-                                );
-                              }
-                            }}
+              render={({ field }) => {
+                const current = field.value || [];
+                const allAreaIds = areasData?.map((a) => a.id.toString()) || [];
+
+                const allSelected = allAreaIds.length > 0 && current.length === allAreaIds.length;
+                const isIndeterminate = current.length > 0 && current.length < allAreaIds.length;
+
+                const toggleSelectAll = (checked: boolean) => {
+                  if (checked) {
+                    field.onChange(allAreaIds);
+                  } else {
+                    field.onChange([]);
+                  }
+                };
+
+                return (
+                  <FormItem>
+                    <FormLabel>Area Access</FormLabel>
+                    {isAreasLoading ? (
+                      <p className="text-sm text-muted-foreground">Loading areas...</p>
+                    ) : (
+                      <>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Checkbox
+                            id="select-all"
+                            checked={allSelected}
+                            indeterminate={isIndeterminate}
+                            onCheckedChange={toggleSelectAll}
                           />
-                          <span>{area.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
+                          <label
+                            htmlFor="select-all"
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            Select All
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {areasData?.map((area: any) => {
+                            const areaIdStr = area.id.toString();
+                            const isChecked = current.includes(areaIdStr);
+
+                            return (
+                              <div key={area.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`area-${area.id}`}
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) => {
+                                    const updated = checked
+                                      ? [...current, areaIdStr]
+                                      : current.filter((id: string) => id !== areaIdStr);
+                                    field.onChange(updated);
+                                  }}
+                                />
+                                <label
+                                  htmlFor={`area-${area.id}`}
+                                  className="text-sm font-medium cursor-pointer"
+                                >
+                                  {area.name}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <DialogFooter className="pt-4 flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={userMutation.isLoading}>
                 Cancel
               </Button>
-              <Button type="submit">
-                {selectedUser ? "Update User" : "Create User"}
+              <Button type="submit" disabled={userMutation.isLoading}>
+                {userMutation.isLoading
+                  ? selectedUser
+                    ? "Updating..."
+                    : "Creating..."
+                  : selectedUser
+                  ? "Update User"
+                  : "Create User"}
               </Button>
             </DialogFooter>
           </form>

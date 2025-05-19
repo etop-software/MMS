@@ -35,18 +35,20 @@ exports.getUserById = async (req, res) => {
 // POST /users - Create a new user
 // Expected body: { username, password, name, userType, areaIds: [1, 2, 3] }
 exports.createUser = async (req, res) => {
-  const { username, password, name, userType, areaIds = [] } = req.body;
+  const { user_id, password, username, userType, areaAccess = [] } = req.body;
+
+  console.log('Received request to create user:', req.body);
 
   try {
     const user = await prisma.user.create({
       data: {
-        username,
+        username: user_id,
         password,
-        name,
+        name: username,
         userType,
         areaAccess: {
-          create: areaIds.map((areaId) => ({
-            area: { connect: { id: areaId } },
+          create: areaAccess.map((areaId) => ({
+            area: { connect: { id: Number(areaId) } }, // Ensure it's a number
           })),
         },
       },
@@ -54,11 +56,14 @@ exports.createUser = async (req, res) => {
         areaAccess: true,
       },
     });
+
     res.status(201).json(user);
   } catch (error) {
+    console.error('Error creating user:', error);
     res.status(500).json({ error: 'Failed to create user', details: error.message });
   }
 };
+
 
 // PUT /users/:id - Update a user and their area access
 exports.updateUser = async (req, res) => {

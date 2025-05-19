@@ -1,142 +1,100 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
-
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model Employee {
-  id            Int            @id @default(autoincrement())
-  pin           Int            @unique
-  name          String
-  group         Int?
-  privilege     Int?
-<<<<<<< HEAD
-  startTime   String?
-  endTime     String?
-=======
-startTime String?
-  endTime   String?
->>>>>>> 1b5ab21e061d4de1a11ed110c630bef5385ba20f
-  department    String?
-  phone         String?
-  email         String?
-  employeeId    Int?
-  password      String?
-  createdAt     DateTime       @default(now())
-  RFID          String?
-  
-  areaAccess    AreaAccess[]   // Relation to AreaAccess
-  deviceAccess  DeviceAccess[] // Relation to DeviceAccess
+  id           Int            @id @default(autoincrement())
+  name         String
+  group        Int?
+  privilege    Int?
+  createdAt    DateTime       @default(now())
+  pin          Int            @unique
+  department   String?
+  email        String?
+  employeeId   Int?
+  phone        String?
+  password     String?
+  RFID         String?
+  startTime    String?        @default("09:00")
+  endTime      String?        @default("18:00")
+  areaAccess   AreaAccess[]
+  deviceAccess DeviceAccess[]
 }
 
 model AreaAccess {
-  id         Int       @id @default(autoincrement())
-  employee   Employee  @relation(fields: [employeeId], references: [id])
+  id         Int      @id @default(autoincrement())
   employeeId Int
-  area       Area      @relation(fields: [areaId], references: [id])
   areaId     Int
+  area       Area     @relation(fields: [areaId], references: [id])
+  employee   Employee @relation(fields: [employeeId], references: [id])
 }
 
 model DeviceAccess {
-  id         Int       @id @default(autoincrement())
-  employee   Employee  @relation(fields: [employeeId], references: [id])
+  id         Int      @id @default(autoincrement())
   employeeId Int
-  device     Device    @relation(fields: [deviceId], references: [id])
   deviceId   Int
-  area       Area      @relation(fields: [areaId], references: [id])
   areaId     Int
+  area       Area     @relation(fields: [areaId], references: [id])
+  device     Device   @relation(fields: [deviceId], references: [id])
+  employee   Employee @relation(fields: [employeeId], references: [id])
 }
 
 model Device {
-  id                Int           @id @default(autoincrement())
-  deviceName        String
-  SN                String        @unique
-  areaId            Int
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-
-  transactionCount  Int?          // <-- made optional
-  ipAddress         String?       // <-- made optional
-  userCount         Int?
-  fpCount           Int?
-  faceCount         Int?
-
-  area              Area          @relation(fields: [areaId], references: [id])
-  mealRules         MealRule[]
-  deviceAccess      DeviceAccess[]
+  id               Int            @id @default(autoincrement())
+  deviceName       String
+  SN               String         @unique
+  areaId           Int
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  faceCount        Int?
+  fpCount          Int?
+  ipAddress        String?
+  transactionCount Int?
+  userCount        Int?
+  area             Area           @relation(fields: [areaId], references: [id])
+  deviceAccess     DeviceAccess[]
+  mealRules        MealRule[]
 }
 
-
-
 model Area {
-  id          Int         @id @default(autoincrement())
-  name        String
-  description String
-  mealRules   MealRule[]  // Links MealRule to Area
-  devices     Device[]    // Links Device to Area
-  areaAccess  AreaAccess[] // Links AreaAccess to Area
-  deviceAccess DeviceAccess[] // Links DeviceAccess to Area
-  users    UserAreaAccess[]
+  id             Int              @id @default(autoincrement())
+  name           String
+  description    String
+  areaAccess     AreaAccess[]
+  devices        Device[]
+  deviceAccess   DeviceAccess[]
+  mealRules      MealRule[]
+  userAreaAccess UserAreaAccess[]
 }
 
 model MealType {
-  mealTypeId  Int 
+  mealTypeId  Int        @id
   name        String
   description String
-
-  mealRules   MealRule[]  // MealType is linked to MealRule, no need to link with Area directly
-
-  @@id([mealTypeId]) // Unique ID for MealType
+  mealRules   MealRule[]
 }
 
 model MealRule {
-  id          Int       @id @default(autoincrement())
-  mealTypeId  Int
-  areaId      Int
-  deviceId    Int?      // Optional field for linking to Device
+  id         Int      @id @default(autoincrement())
+  mealTypeId Int
+  areaId     Int
+  startTime  String
+  endTime    String
+  days       String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deviceId   Int?
+  area       Area     @relation(fields: [areaId], references: [id])
+  device     Device?  @relation(fields: [deviceId], references: [id])
+  mealType   MealType @relation(fields: [mealTypeId], references: [mealTypeId])
 
-  startTime   String    // Format: HH:mm
-  endTime     String
-  days        String[]  // Days the rule applies (Postgres array)
-
-  mealType    MealType  @relation(fields: [mealTypeId], references: [mealTypeId])
-  area        Area      @relation(fields: [areaId], references: [id])
-  device      Device?   @relation(fields: [deviceId], references: [id])
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@unique([mealTypeId, areaId, deviceId])  // Ensure uniqueness across mealTypeId, areaId, and deviceId
+  @@unique([mealTypeId, areaId, deviceId])
 }
-
-model User {
-  id          Int         @id @default(autoincrement())
-  username    String      @unique
-  password    String
-  name        String
-  userType    String      // Could be an enum if you want (e.g., Admin, Staff, Viewer)
-  createdAt   DateTime    @default(now())
-
-  areaAccess  UserAreaAccess[] // Relation to user-area access
-}
-
-model UserAreaAccess {
-  id       Int    @id @default(autoincrement())
-  user     User   @relation(fields: [userId], references: [id])
-  userId   Int
-  area     Area   @relation(fields: [areaId], references: [id])
-  areaId   Int
-}
-
 
 model Logs {
   id              Int      @id @default(autoincrement())
@@ -153,6 +111,23 @@ model Logs {
   maskflag        Int
   temperature     Int
   convtemperature Int
-
   createdAt       DateTime @default(now())
+}
+
+model User {
+  id         Int              @id @default(autoincrement())
+  username   String           @unique
+  password   String
+  name       String
+  userType   String
+  createdAt  DateTime         @default(now())
+  areaAccess UserAreaAccess[]
+}
+
+model UserAreaAccess {
+  id     Int  @id @default(autoincrement())
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+  area   Area @relation(fields: [areaId], references: [id])
+  areaId Int
 }
