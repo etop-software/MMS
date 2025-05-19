@@ -19,8 +19,13 @@ model Employee {
   name          String
   group         Int?
   privilege     Int?
+<<<<<<< HEAD
   startTime   String?
   endTime     String?
+=======
+startTime String?
+  endTime   String?
+>>>>>>> 1b5ab21e061d4de1a11ed110c630bef5385ba20f
   department    String?
   phone         String?
   email         String?
@@ -80,6 +85,7 @@ model Area {
   devices     Device[]    // Links Device to Area
   areaAccess  AreaAccess[] // Links AreaAccess to Area
   deviceAccess DeviceAccess[] // Links DeviceAccess to Area
+  users    UserAreaAccess[]
 }
 
 model MealType {
@@ -111,6 +117,26 @@ model MealRule {
 
   @@unique([mealTypeId, areaId, deviceId])  // Ensure uniqueness across mealTypeId, areaId, and deviceId
 }
+
+model User {
+  id          Int         @id @default(autoincrement())
+  username    String      @unique
+  password    String
+  name        String
+  userType    String      // Could be an enum if you want (e.g., Admin, Staff, Viewer)
+  createdAt   DateTime    @default(now())
+
+  areaAccess  UserAreaAccess[] // Relation to user-area access
+}
+
+model UserAreaAccess {
+  id       Int    @id @default(autoincrement())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   Int
+  area     Area   @relation(fields: [areaId], references: [id])
+  areaId   Int
+}
+
 
 model Logs {
   id              Int      @id @default(autoincrement())

@@ -23,6 +23,7 @@ class AreaService {
       const areas = await prisma.area.findMany();
       return areas;
     } catch (error) {
+      console.error("Error retrieving areas:", error);  
       throw new Error("Failed to retrieve areas");
     }
   }

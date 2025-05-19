@@ -30,8 +30,9 @@ const fetchMealHistory = async (query) => {
         null, // offset
       ]
     );
-  
+   console.log("Fetched meal history:", result.rows);
     return result.rows;
+   
   };
 
 exports.exportCSV = async (req, res) => {

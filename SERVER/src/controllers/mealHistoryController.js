@@ -32,6 +32,7 @@ exports.getMealHistory = async (req, res) => {
       ]
     );
     const data = result.rows;
+    console.log("Fetched meal history:", data);
       res.json({ success: true, data });
     }
    catch (error) {

@@ -20,7 +20,7 @@ class LogService {
 
       const log = await prisma.logs.create({
         data: {
-          time: adjustedDate,
+          time: date,
           pin: Number(data.pin),
           cardno: Number(data.cardno),
           eventaddr: Number(data.eventaddr),

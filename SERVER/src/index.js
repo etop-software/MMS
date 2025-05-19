@@ -14,6 +14,7 @@ const logRoutes = require('./routes/logRoutes');
 const mealHistoryRoutes = require('./routes/mealHistoryRoutes');
 const exportRoutes = require("./routes/exportRoutes");
 const deviceRoutes = require('./routes/deviceRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 app.use((req, res, next) => {
   if (req.headers['user-agent']?.includes('iClock')) {
@@ -46,6 +47,7 @@ app.use('/api/logs', logRoutes);
 app.use('/api', mealHistoryRoutes);
 app.use("/api", exportRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/users', userRoutes);
 
 require('./pushOps')(app);
 
