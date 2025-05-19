@@ -19,8 +19,13 @@ model Employee {
   name          String
   group         Int?
   privilege     Int?
+<<<<<<< HEAD
+  startTime   String?
+  endTime     String?
+=======
 startTime String?
   endTime   String?
+>>>>>>> 1b5ab21e061d4de1a11ed110c630bef5385ba20f
   department    String?
   phone         String?
   email         String?
