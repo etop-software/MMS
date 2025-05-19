@@ -2,7 +2,7 @@
 import React, { ReactNode } from "react";
 import  {useEffect, useState} from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Building2, Users, Coffee, CalendarClock, Settings, ChevronRight ,FileSpreadsheet } from "lucide-react";
+import { LayoutDashboard, Building2, Users, Coffee, CalendarClock, Settings, ChevronRight ,FileSpreadsheet,UserCog ,Tablet} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -47,11 +47,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navLinks: NavLink[] = [
     { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: "/areas", label: "Areas", icon: <Building2 className="h-5 w-5" /> },
-    { to: "/devices", label: "Devices", icon: <Users className="h-5 w-5" /> },
+    { to: "/devices", label: "Devices", icon: <Tablet className="h-5 w-5" /> },
     { to: "/departments", label: "Departments", icon: <Users className="h-5 w-5" /> },
     { to: "/employees", label: "Employees", icon: <Users className="h-5 w-5" /> },
     { to: "/meal-types", label: "Meal Types", icon: <Coffee className="h-5 w-5" /> },
     { to: "/meal-rules", label: "Meal Rules", icon: <CalendarClock className="h-5 w-5" /> },
+    { to: "/users", label: "Users", icon: <UserCog className="h-5 w-5" /> },
+
     { to: "/meal-restrictions", label: "Meal Restrictions", icon: <Settings className="h-5 w-5" /> },
     {
       label: "Reports",
@@ -145,7 +147,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
-          k
+        
           </SidebarFooter>
           <SidebarRail />
         </Sidebar>
