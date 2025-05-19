@@ -4,8 +4,9 @@ const prisma = new PrismaClient();
 class LogService {
   async createLog(data) {
     try {
-       console.log("Creating log:", data);
+       
         const date = new Date(data.time);
+        console.log("Original date:", date);
         const adjustedDate = new Date(date.setHours(date.getHours() + 4));
         console.log("Adjusted date:", adjustedDate);
   
