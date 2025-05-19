@@ -6,9 +6,11 @@ class LogService {
     try {
        
         const date = new Date(data.time);
-        console.log("Original date:", date);
-        const adjustedDate = new Date(date.setHours(date.getHours() + 4));
-        console.log("Adjusted date:", adjustedDate);
+      console.log("Original date (will be inserted):", date);
+
+      // For debugging only — if you want to see what +4 hours would look like
+      const adjustedDate = new Date(date.getTime() + 4 * 60 * 60 * 1000);
+      console.log("Adjusted date (for reference only):", adjustedDate);
   
       if (data.pin === '0') {
         console.warn("Skipping log insertion: pin is '0'");
