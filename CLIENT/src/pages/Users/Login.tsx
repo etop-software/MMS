@@ -26,12 +26,15 @@ const Login = () => {
       }
   
       const data = await response.json(); 
-      const { needToChangePassword , token,userAccess,user_id} = data;
+      const { needToChangePassword , token,userAccess,user_id,name,userType} = data;
 
       localStorage.setItem('token', token);
       localStorage.setItem('userAccess', userAccess);
       localStorage.setItem('user_id', user_id);
       localStorage.setItem('needToChangePassword', needToChangePassword);
+      localStorage.setItem('name', name);
+      localStorage.setItem('userType', userType);
+
 
 
       navigate(needToChangePassword ? "/change-password" : "/dashboard");

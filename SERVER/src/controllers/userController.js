@@ -148,6 +148,8 @@ exports.loginUser = async (req, res) => {
       userAccess: user.areaAccess.map((access) => access.area),
       needToChangePassword: user.needToChangePassword,
       user_id:user.id,
+      name:user.name,
+      userType:user.userType
     });
   } catch (error) {
     console.error('Login error:', error);
