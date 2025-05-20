@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye,EyeOffIcon} from "lucide-react";
+import { Toaster as Sonner, toast } from "sonner"
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -21,9 +23,10 @@ const Login = () => {
       });
   
       if (!response.ok) {
-        alert("Login failed!");
-        throw new Error('Login failed!');
+        toast.error('Invalid credentials');
+        return
       }
+      toast.success('Login successful!');
   
       const data = await response.json(); 
       const { needToChangePassword , token,userAccess,user_id,name,userType} = data;

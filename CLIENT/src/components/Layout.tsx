@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Toaster as Sonner, toast } from "sonner"
 import {
   LayoutDashboard, Building2, Users, Coffee, CalendarClock, Settings,
   ChevronRight, FileSpreadsheet, UserCog, Tablet, LogOut, User
@@ -48,6 +49,7 @@ const username = localStorage.getItem("name");
   };
 
   const handleLogout = () => {
+    toast.success("Logged out successfully");
   localStorage.removeItem('token');
   localStorage.removeItem('userAccess');
   localStorage.removeItem('user_id');

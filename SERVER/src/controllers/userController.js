@@ -133,7 +133,6 @@ exports.loginUser = async (req, res) => {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-        console.log('Invalid password');
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
@@ -152,7 +151,6 @@ exports.loginUser = async (req, res) => {
       userType:user.userType
     });
   } catch (error) {
-    console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed', details: error.message });
   }
 };

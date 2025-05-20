@@ -22,6 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { Toaster as Sonner, toast } from "sonner"
 
 // Zod Schema
 const userFormSchema = z.object({
@@ -101,13 +102,15 @@ const UserForm: React.FC<UserFormProps> = ({
         return axios.post(`${import.meta.env.VITE_API_URL}/users`, payload);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      onClose();
-    },
-    onError: (error) => {
-      console.error("Mutation error:", error);
-    },
+     onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    toast.success(`User ${selectedUser ? "updated" : "created"} successfully!`);
+    onClose();
+  },
+  onError: (error: any) => {
+    console.error("Mutation error:", error);
+    toast.error(`Failed to ${selectedUser ? "update" : "create"} user: ${error?.message || "Unknown error"}`);
+  },
   });
 
   // Populate form if editing
