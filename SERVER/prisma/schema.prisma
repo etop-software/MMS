@@ -121,6 +121,7 @@ model User {
   name       String
   userType   String
   createdAt  DateTime         @default(now())
+  needToChangePassword Boolean            @default(true)
   areaAccess UserAreaAccess[]
 }
 

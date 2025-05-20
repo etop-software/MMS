@@ -47,9 +47,9 @@ const changePasswordtemp = () => {
   
     try {
 
-      const userId = JSON.parse(localStorage.getItem("userId"));
+      const userId = JSON.parse(localStorage.getItem("user_id"));
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/change-password`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users/change-password`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

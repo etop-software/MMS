@@ -23,11 +23,8 @@ import Users from "./pages/Users/UsersList";
 
 const queryClient = new QueryClient();
 
-// 🔐 Auth check
-const isAuthenticated = true;
-// !!localStorage.getItem("token");
+const isAuthenticated = localStorage.getItem("token");
 
-// 🔒 ProtectedRoute wrapper
 const ProtectedRoute = ({ element }) => {
   return isAuthenticated ? element : <Navigate to="/login" replace />;
 };

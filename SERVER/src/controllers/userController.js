@@ -1,4 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const SECRET_KEY = 'your_secret_key';
 const prisma = new PrismaClient();
 
 exports.getUsers = async (req, res) => {
@@ -32,23 +35,23 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// POST /users - Create a new user
-// Expected body: { username, password, name, userType, areaIds: [1, 2, 3] }
-exports.createUser = async (req, res) => {
-  const { user_id, password, username, userType, areaAccess = [] } = req.body;
 
-  console.log('Received request to create user:', req.body);
+exports.createUser = async (req, res) => {
+  const { name, password, username, userType, areaAccess = [] } = req.body;
 
   try {
+    const hashedPassword = await bcrypt.hash(password, 10); // 10 = salt rounds
+
     const user = await prisma.user.create({
       data: {
-        username: user_id,
-        password,
-        name: username,
+        username,
+        password: hashedPassword,
+        name,
         userType,
+        needToChangePassword: true,
         areaAccess: {
           create: areaAccess.map((areaId) => ({
-            area: { connect: { id: Number(areaId) } }, // Ensure it's a number
+            area: { connect: { id: Number(areaId) } },
           })),
         },
       },
@@ -64,24 +67,29 @@ exports.createUser = async (req, res) => {
   }
 };
 
-
-// PUT /users/:id - Update a user and their area access
 exports.updateUser = async (req, res) => {
   const id = parseInt(req.params.id);
-  const { username, password, name, userType, areaIds = [] } = req.body;
+  const { username, password, name, userType, areaAccess: areaIds = [] } = req.body;
 
   try {
-    const user = await prisma.user.update({
-      where: { id },
-      data: {
-        username,
-        password,
-        name,
-        userType,
-        areaAccess: {
-          deleteMany: {}, // remove existing
-        },
+    const dataToUpdate = {
+      username,
+      name,
+      userType,
+      areaAccess: {
+        deleteMany: {}, 
       },
+    };
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      dataToUpdate.password = hashedPassword;
+      dataToUpdate.needToChangePassword = true; 
+    }
+
+    await prisma.user.update({
+      where: { id },
+      data: dataToUpdate,
     });
 
     await prisma.userAreaAccess.createMany({
@@ -98,11 +106,82 @@ exports.updateUser = async (req, res) => {
 
     res.json(updatedUser);
   } catch (error) {
+    console.error('Error updating user:', error);
     res.status(500).json({ error: 'Failed to update user', details: error.message });
   }
 };
 
-// DELETE /users/:id - Delete user and related access
+
+
+exports.loginUser = async (req, res) => {
+
+  const { user_id: username, password } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: {
+        areaAccess: {
+          include: { area: true },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+        console.log('Invalid password');
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, userType: user.userType },
+      SECRET_KEY,
+      { expiresIn: '1h' }
+    );
+
+    res.json({
+      token,
+      userAccess: user.areaAccess.map((access) => access.area),
+      needToChangePassword: user.needToChangePassword,
+      user_id:user.id,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed', details: error.message });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  const { userId, new_password } = req.body;
+
+  try {
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        needToChangePassword: false, 
+      },
+    });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.error('Error changing password:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
 exports.deleteUser = async (req, res) => {
   const id = parseInt(req.params.id);
   try {

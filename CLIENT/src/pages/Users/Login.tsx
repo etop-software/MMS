@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye,EyeOffIcon} from "lucide-react";
-import axios from 'axios';
-
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,14 +13,8 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    console.log("abhishek");
-    const force_password_change = false;
-
-      navigate(force_password_change ? "/change-password" : "/dashboard");
-
-  
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + '/api/users/login', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -34,31 +26,15 @@ const Login = () => {
       }
   
       const data = await response.json(); 
+      const { needToChangePassword , token,userAccess,user_id} = data;
 
-      const { token, user_id, username, force_password_change , usertype,privileges} = data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('userAccess', userAccess);
+      localStorage.setItem('user_id', user_id);
+      localStorage.setItem('needToChangePassword', needToChangePassword);
 
-    
-    //   localStorage.setItem('token', token);
-    //   localStorage.setItem('userName', username);
-    //   localStorage.setItem('userId', user_id);
-    //   localStorage.setItem('userType', usertype);
-    //   localStorage.setItem('forcePasswordChange', force_password_change);
-    //   localStorage.setItem('privileges', JSON.stringify({
-    //       organization: privileges.organization,
-    //       departments: privileges.departments,
-    //       designations: privileges.designations, 
-    //       employees: privileges.employees,
-    //       company: privileges.company,
-    //       shifts: privileges.shifts,
-    //       deviceArea: privileges.deviceArea,
-    //       reports: privileges.reports,
-    //       processing: privileges.processing,
-    //       manualPunch: privileges.manualPunch,
-    //       users: privileges.users
-    //   }));
-      
 
-      navigate(force_password_change ? "/change-password" : "/dashboard");
+      navigate(needToChangePassword ? "/change-password" : "/dashboard");
       
     } catch (error) {
       console.error(error);
@@ -88,12 +64,12 @@ const Login = () => {
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              User Id
+              User name
             </label>
             <input
               type="text"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="Enter your User ID"
+              placeholder="Enter your Username"
               value={formData.user_id}
               onChange={(e) =>
                 setFormData({ ...formData, user_id: e.target.value })

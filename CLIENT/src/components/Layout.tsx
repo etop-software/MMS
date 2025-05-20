@@ -70,9 +70,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex min-h-screen w-full bg-background">
         <Sidebar>
           <SidebarHeader>
-            <div className="flex items-center px-4 py-4">
-              <h1 className="text-xl font-bold text-primary-blue">Meal Manager</h1>
-            </div>
+           <img
+                src="https://etopme.ae/wp-content/uploads/2024/08/eTOP-Trading.png"
+                className={`transition-all w-52 h-12 object-contain`}
+                alt="Logo"
+              />
             <SidebarSeparator />
           </SidebarHeader>
           <SidebarContent>

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
 
 import PageHeader from "@/components/common/PageHeader";
 import { usePagination } from "@/hooks/use-pagination";
@@ -97,35 +99,51 @@ const UsersList: React.FC = () => {
           <Table className="data-table">
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Full Name</TableHead>
+                <TableHead>Username</TableHead>
                 <TableHead>User Type</TableHead>
+                <TableHead>Areas</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     Loading users...
                   </TableCell>
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     Error fetching users. Please try again later.
                   </TableCell>
                 </TableRow>
               ) : paginatedData?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     No users found.
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedData?.map((user: User) => (
-                  <TableRow key={user.user_id}>
-                    <TableCell className="font-medium">{user.username}</TableCell>
-                    <TableCell>{user.usertype}</TableCell>
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name || "—"}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.userType}</TableCell>
+                 <TableCell>
+  <div className="flex flex-wrap gap-1">
+    {user.areaAccess?.length ? (
+      user.areaAccess.map((access) => (
+        <Badge key={access.area.id} variant="secondary">
+          {access.area.name}
+        </Badge>
+      ))
+    ) : (
+      <span className="text-muted-foreground">—</span>
+    )}
+  </div>
+</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
@@ -163,30 +181,26 @@ const UsersList: React.FC = () => {
         />
       )}
 
-    <UserForm
-  open={isCreateDialogOpen}
-  onClose={() => setIsCreateDialogOpen(false)}
-  selectedUser={null}
-  onSubmit={(data) => {
-    // your create logic
-  }}
-/>
+      <UserForm
+        open={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        selectedUser={null}
+        onSubmit={(data) => {
+          // Your create logic
+        }}
+      />
 
+      {selectedUser && (
+        <UserForm
+          open={isEditDialogOpen}
+          onClose={() => setIsEditDialogOpen(false)}
+          selectedUser={selectedUser}
+          onSubmit={(data) => {
+            // Your update logic
+          }}
+        />
+      )}
 
-      {/* Edit User Dialog */}
-     {selectedUser && (
-  <UserForm
-    open={isEditDialogOpen}
-    onClose={() => setIsEditDialogOpen(false)}
-    selectedUser={selectedUser}
-    onSubmit={(data) => {
-      // your update logic
-    }}
-  />
-)}
-
-
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}

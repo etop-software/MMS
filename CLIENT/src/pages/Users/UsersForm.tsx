@@ -23,9 +23,11 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
+// Zod Schema
 const userFormSchema = z.object({
-  user_id: z.string().min(1, "User ID is required"),
-  username: z.string().min(1, "Username is required"),
+ // user_id: z.string().min(1, "User ID is required"),
+  username: z.string().min(1, "Username (Login) is required"),
+  name: z.string().min(1, "Full Name is required"),
   password: z.string().optional(),
   userType: z.enum(["Admin", "NormalUser"], {
     required_error: "User Type is required",
@@ -39,10 +41,20 @@ interface UserFormProps {
   open: boolean;
   onClose: () => void;
   selectedUser: {
-    user_id: string;
+    id: number;
+    // user_id: string;
     username: string;
-    usertype: "Admin" | "NormalUser";
-    areaAccess?: string[];
+    name: string;
+    userType: "Admin" | "NormalUser";
+    areaAccess?: {
+      id: number;
+      userId: number;
+      areaId: number;
+      area: {
+        id: number;
+        name: string;
+      };
+    }[];
   } | null;
 }
 
@@ -54,8 +66,9 @@ const UserForm: React.FC<UserFormProps> = ({
   const form = useForm<UserFormData>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
-      user_id: "",
+      // user_id: "",
       username: "",
+      name: "",
       password: "",
       userType: "NormalUser",
       areaAccess: [],
@@ -65,52 +78,47 @@ const UserForm: React.FC<UserFormProps> = ({
   const queryClient = useQueryClient();
 
   // Fetch areas
-  const fetchAreas = async () => {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
-    return response.data;
-  };
-
-  const { data: areasData, isLoading: isAreasLoading } = useQuery({
+  const { data: areasData = [], isLoading: isAreasLoading } = useQuery({
     queryKey: ["areas"],
-    queryFn: fetchAreas,
+    queryFn: async () => {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
+      return res.data;
+    },
   });
 
-const userMutation = useMutation({
-  mutationFn: (data: UserFormData) => {
-    const payload = {
-      ...data,
-      areaAccess: data.areaAccess?.map(Number), // 🔁 convert string[] to number[]
-    };
+  // User mutation (add or update)
+  const userMutation = useMutation({
+    mutationFn: (data: UserFormData) => {
+      console.log(data);
+      const payload = {
+        ...data,
+        areaAccess: data.areaAccess?.map(Number),
+      };
 
-    if (selectedUser) {
-      // Update user
-      return axios.put(`${import.meta.env.VITE_API_URL}/users/${data.user_id}`, payload);
-    } else {
-      // Add user
-      return axios.post(`${import.meta.env.VITE_API_URL}/users`, payload);
-    }
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["users"] });
-    onClose();
-  },
-  onError: (error) => {
-    console.error("Mutation error:", error);
-    // You can show a toast or alert here
-  },
-});
+      if (selectedUser) {
+        return axios.put(`${import.meta.env.VITE_API_URL}/users/${selectedUser.id}`, payload);
+      } else {
+        return axios.post(`${import.meta.env.VITE_API_URL}/users`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      onClose();
+    },
+    onError: (error) => {
+      console.error("Mutation error:", error);
+    },
+  });
 
-
-
-  // Populate form on edit
+  // Populate form if editing
   useEffect(() => {
     if (selectedUser) {
       form.reset({
-        user_id: selectedUser.user_id,
         username: selectedUser.username,
+        name: selectedUser.name,
         password: "",
-        userType: selectedUser.usertype,
-        areaAccess: selectedUser.areaAccess?.map(String) ?? [],
+        userType: selectedUser.userType,
+        areaAccess: selectedUser.areaAccess?.map((a) => a.area.id.toString()) ?? [],
       });
     } else {
       form.reset();
@@ -119,6 +127,7 @@ const userMutation = useMutation({
 
   // Submit handler
   const handleSubmit = (data: UserFormData) => {
+    console.log(data);  
     userMutation.mutate(data);
   };
 
@@ -131,7 +140,7 @@ const userMutation = useMutation({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pt-2">
-            <FormField
+            {/* <FormField
               control={form.control}
               name="user_id"
               render={({ field }) => (
@@ -143,11 +152,25 @@ const userMutation = useMutation({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
 
             <FormField
               control={form.control}
               name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username (Login)</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
@@ -195,17 +218,14 @@ const userMutation = useMutation({
               name="areaAccess"
               render={({ field }) => {
                 const current = field.value || [];
-                const allAreaIds = areasData?.map((a) => a.id.toString()) || [];
+                const allAreaIds = areasData.map((a) => a.id.toString());
 
                 const allSelected = allAreaIds.length > 0 && current.length === allAreaIds.length;
                 const isIndeterminate = current.length > 0 && current.length < allAreaIds.length;
 
                 const toggleSelectAll = (checked: boolean) => {
-                  if (checked) {
-                    field.onChange(allAreaIds);
-                  } else {
-                    field.onChange([]);
-                  }
+                  if (checked) field.onChange(allAreaIds);
+                  else field.onChange([]);
                 };
 
                 return (
@@ -222,15 +242,12 @@ const userMutation = useMutation({
                             indeterminate={isIndeterminate}
                             onCheckedChange={toggleSelectAll}
                           />
-                          <label
-                            htmlFor="select-all"
-                            className="text-sm font-medium cursor-pointer"
-                          >
+                          <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
                             Select All
                           </label>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                          {areasData?.map((area: any) => {
+                          {areasData.map((area: any) => {
                             const areaIdStr = area.id.toString();
                             const isChecked = current.includes(areaIdStr);
 
@@ -242,14 +259,11 @@ const userMutation = useMutation({
                                   onCheckedChange={(checked) => {
                                     const updated = checked
                                       ? [...current, areaIdStr]
-                                      : current.filter((id: string) => id !== areaIdStr);
+                                      : current.filter((id) => id !== areaIdStr);
                                     field.onChange(updated);
                                   }}
                                 />
-                                <label
-                                  htmlFor={`area-${area.id}`}
-                                  className="text-sm font-medium cursor-pointer"
-                                >
+                                <label htmlFor={`area-${area.id}`} className="text-sm font-medium cursor-pointer">
                                   {area.name}
                                 </label>
                               </div>
