@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOffIcon } from "lucide-react";
+import { Toaster as Sonner, toast } from "sonner"
 
 const changePasswordtemp = () => {
   const navigate = useNavigate();
@@ -61,15 +62,12 @@ const changePasswordtemp = () => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Error response from server:", errorData);
+         toast.error("Error changing password. Please try again.");
         throw new Error(errorData.message || "Failed to change password");
       }
   
       const data = await response.json();
-  
-      if (data?.user) {
-        user.force_password_change = false;
-        localStorage.setItem("user", JSON.stringify(user));
-      }
+      toast.success("Password changed successfully!");
   
       navigate("/dashboard");
     } catch (error) {
