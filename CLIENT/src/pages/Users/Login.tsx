@@ -26,8 +26,6 @@ const Login = () => {
         toast.error('Invalid credentials');
         return
       }
-
-      toast.success('Login successful!');
   
       const data = await response.json(); 
       const { needToChangePassword , token,userAccess,user_id,name,userType} = data;
@@ -39,16 +37,8 @@ const Login = () => {
       localStorage.setItem('name', name);
       localStorage.setItem('userType', userType);
 
-     if(needToChangePassword){  
-        toast.warning('Password change required');
-        navigate('/change-password');
-     }
-     else
-     {
-         toast.success('Login successful!');
-        navigate('/dashboard');
-     }
-
+      navigate(needToChangePassword ? "/change-password" : "/dashboard");
+      
     } catch (error) {
       console.error(error);
     }
