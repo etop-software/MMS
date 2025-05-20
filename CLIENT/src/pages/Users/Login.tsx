@@ -8,41 +8,53 @@ const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  user_id: '',
+  password: ''
+});
+
 
   const handleLogin = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      const response = await fetch(import.meta.env.VITE_API_URL + '/users/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-  
-      if (!response.ok) {
-        toast.error('Invalid credentials');
-        return
-      }
-  
-      const data = await response.json(); 
-      const { needToChangePassword , token,userAccess,user_id,name,userType} = data;
+  try {
+    const response = await fetch(import.meta.env.VITE_API_URL + '/users/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('userAccess', userAccess);
-      localStorage.setItem('user_id', user_id);
-      localStorage.setItem('needToChangePassword', needToChangePassword);
-      localStorage.setItem('name', name);
-      localStorage.setItem('userType', userType);
-
-      navigate(needToChangePassword ? "/change-password" : "/dashboard");
-      
-    } catch (error) {
-      console.error(error);
+    if (!response.ok) {
+      toast.error('Invalid credentials');
+      return;
     }
-  };
+
+    const data = await response.json(); 
+    console.log(data);
+
+    const { needToChangePassword, token, userAccess, user_id, name, userType } = data;
+
+    // Store the login data in localStorage
+    localStorage.setItem('token', token);
+    localStorage.setItem('userAccess', JSON.stringify(userAccess)); // Ensure it's a string
+    localStorage.setItem('user_id', user_id);
+    localStorage.setItem('needToChangePassword', needToChangePassword.toString()); // Store boolean as string
+    localStorage.setItem('name', name);
+    localStorage.setItem('userType', userType);
+    navigate('/dashboard');  // This is just to test if navigation works.
+
+
+    // Ensure navigate runs after localStorage has been updated
+    if (needToChangePassword) {
+      navigate("/change-password");
+    } else {
+      navigate("/dashboard");
+    }
+
+  } catch (error) {
+    console.error("Error during login:", error);
+  }
+};
+
   
   
 

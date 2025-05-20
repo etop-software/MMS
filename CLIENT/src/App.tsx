@@ -40,10 +40,10 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/change-password" element={<ChangePassword />} />
 
-            <Route
+            {/* <Route
               path="/"
               element={<ProtectedRoute element={<Navigate to="/dashboard" replace />} />}
-            />
+            /> */}
 
             <Route
               path="/dashboard"

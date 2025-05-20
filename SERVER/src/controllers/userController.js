@@ -117,6 +117,8 @@ exports.loginUser = async (req, res) => {
 
   const { user_id: username, password } = req.body;
 
+  console.log('Received login request:', username, password);
+
   try {
     const user = await prisma.User.findUnique({
       where: { username },
