@@ -20,13 +20,21 @@ import ChangePassword from "./pages/Users/ChangePassword";
 import { AppProvider } from "./context/AppContext";
 import Users from "./pages/Users/UsersList";
 
-
+// Create a QueryClient instance for React Query
 const queryClient = new QueryClient();
 
-const isAuthenticated = localStorage.getItem("token");
-
+// ProtectedRoute component to ensure user is authenticated
 const ProtectedRoute = ({ element }) => {
-  return isAuthenticated ? element : <Navigate to="/login" replace />;
+  // Check if the user has a valid token in localStorage
+  const isAuthenticated = localStorage.getItem("token");
+
+  // If the user is authenticated, render the passed element (child route)
+  if (isAuthenticated) {
+    return element;
+  }
+
+  // If not authenticated, redirect to login page
+  return <Navigate to="/login" replace />;
 };
 
 const App = () => (
@@ -37,54 +45,57 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Login and Change Password Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/change-password" element={<ChangePassword />} />
 
-            {/* <Route
+            {/* Protected Routes */}
+            <Route
               path="/"
-              element={<ProtectedRoute element={<Navigate to="/dashboard" replace />} />}
-            /> */}
-
+              element={<Navigate to="/dashboard" replace />}  // Default route to dashboard
+            />
             <Route
               path="/dashboard"
-              element={<ProtectedRoute element={<Layout><Dashboard /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><Dashboard /></Layout>} />}  // Protected route
             />
             <Route
               path="/users"
-              element={<ProtectedRoute element={<Layout><Users /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><Users /></Layout>} />}  // Protected route
             />
             <Route
               path="/areas"
-              element={<ProtectedRoute element={<Layout><AreasList /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><AreasList /></Layout>} />}  // Protected route
             />
             <Route
               path="/departments"
-              element={<ProtectedRoute element={<Layout><DepartmentsList /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><DepartmentsList /></Layout>} />}  // Protected route
             />
             <Route
               path="/employees"
-              element={<ProtectedRoute element={<Layout><EmployeesList /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><EmployeesList /></Layout>} />}  // Protected route
             />
             <Route
               path="/meal-types"
-              element={<ProtectedRoute element={<Layout><MealTypesList /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><MealTypesList /></Layout>} />}  // Protected route
             />
             <Route
               path="/meal-rules"
-              element={<ProtectedRoute element={<Layout><MealRulesList /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><MealRulesList /></Layout>} />}  // Protected route
             />
             <Route
               path="/meal-restrictions"
-              element={<ProtectedRoute element={<Layout><MealRestrictionsList /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><MealRestrictionsList /></Layout>} />}  // Protected route
             />
             <Route
               path="/meal-history"
-              element={<ProtectedRoute element={<Layout><MealHistoryReport /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><MealHistoryReport /></Layout>} />}  // Protected route
             />
             <Route
               path="/devices"
-              element={<ProtectedRoute element={<Layout><DeviceList /></Layout>} />}
+              element={<ProtectedRoute element={<Layout><DeviceList /></Layout>} />}  // Protected route
             />
+
+            {/* Catch-all for undefined routes */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
