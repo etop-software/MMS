@@ -118,7 +118,7 @@ exports.loginUser = async (req, res) => {
   const { user_id: username, password } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { username },
       include: {
         areaAccess: {
