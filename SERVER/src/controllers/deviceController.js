@@ -27,7 +27,37 @@ const deviceController = {
       return res.status(500).json({ error: 'Error fetching devices' });
     }
   },
+getMealRulesByDevice: async (req, res) => {
+  const { deviceId } = req.query;
 
+  // Validate query param
+  const parsedId = parseInt(deviceId);
+  if (!parsedId || isNaN(parsedId)) {
+    return res.status(400).json({ error: "Invalid or missing deviceId" });
+  }
+
+  try {
+    const mealRules = await prisma.mealRule.findMany({
+      where: { deviceId: parsedId },
+      include: {
+        mealType: true,
+        area: true,
+        device: true,
+      },
+    });
+
+    if (!mealRules.length) {
+      return res.status(404).json({ message: "No meal rules found for this device." });
+    }
+
+    return res.json(mealRules);
+  } catch (error) {
+    console.error("Error fetching meal rules:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+},
+
+    
   getAllDevices: async (req, res) => {
     try {
       const devices = await prisma.device.findMany({

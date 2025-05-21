@@ -7,7 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -20,7 +20,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Employee } from "@/types";
 import {
   Select,
   SelectContent,
@@ -31,7 +30,7 @@ import {
 import { useAppContext } from "@/context/AppContext";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import axios from "axios";
-
+import { Employee } from "@/types";
 
 const formSchema = z.object({
   name: z.string().min(1, "Employee name is required"),
@@ -51,10 +50,11 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
   const queryClient = useQueryClient();
   const [selectedAreas, setSelectedAreas] = useState<number[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Record<number, number[]>>({});
+  const [selectedMealRules, setSelectedMealRules] = useState<Record<number, number[]>>({});
   const [loadingDevices, setLoadingDevices] = useState<number[]>([]);
   const [devicesByArea, setDevicesByArea] = useState<Record<number, any[]>>({});
 
-  const form = useForm<FormValues>({
+  const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
@@ -70,55 +70,84 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
     },
   });
 
-  useEffect(() => {
-    if (employeeToEdit) {
-      const areaIds = employeeToEdit.areaAccess?.map((a) => a.areaId) || [];
-      const deviceMap: Record<number, number[]> = {};
+useEffect(() => {
+  if (employeeToEdit) {
+    // 1) Get raw area & device access from employee
+    const initialAreas = employeeToEdit.areaAccess?.map((a) => a.areaId) || [];
+    const rawDeviceMap: Record<number, number[]> = {};
+    employeeToEdit.deviceAccess?.forEach(({ areaId, deviceId }) => {
+      if (!rawDeviceMap[areaId]) rawDeviceMap[areaId] = [];
+      rawDeviceMap[areaId].push(deviceId);
+    });
 
-      employeeToEdit.deviceAccess?.forEach((d) => {
-        if (!deviceMap[d.areaId]) deviceMap[d.areaId] = [];
-        deviceMap[d.areaId].push(d.deviceId);
-      });
+    // 2) Build meal‐rule map from employeeMealAccesses
+    const ruleMap: Record<number, number[]> = {};
+    employeeToEdit.employeeMealAccesses?.forEach(({ deviceId, mealRuleId }) => {
+      if (!ruleMap[deviceId]) ruleMap[deviceId] = [];
+      ruleMap[deviceId].push(mealRuleId);
+    });
 
-      form.reset({
-        ...employeeToEdit,
-        areaAccess: areaIds,
-        selectedDevices: deviceMap,
-      });
-
-      setSelectedAreas(areaIds);
-      setSelectedDevices(deviceMap);
-      areaIds.forEach((areaId) => {
-        if (!devicesByArea[areaId]) fetchDevicesByArea(areaId);
-      });
-    } else {
-      form.reset();
-      setSelectedAreas([]);
-      setSelectedDevices({});
+    // 3) Prune devices that have no meal rules checked
+    const prunedDeviceMap: Record<number, number[]> = {};
+    for (const [areaIdStr, deviceIds] of Object.entries(rawDeviceMap)) {
+      const areaId = Number(areaIdStr);
+      const kept = deviceIds.filter((devId) => (ruleMap[devId] || []).length > 0);
+      if (kept.length) prunedDeviceMap[areaId] = kept;
     }
-  }, [employeeToEdit, isOpen]);
 
-const fetchAreas = async () => {
-  const res = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
-  return res.data;
-};
-const { data: areasData = [] } = useQuery({
-  queryKey: ['areas'],
-  queryFn: fetchAreas,
-});
+    // 4) Prune areas that, after device pruning, have no devices left
+    const prunedAreas = Object.keys(prunedDeviceMap).map((a) => Number(a));
 
-const fetchDevicesByArea = async (areaId: number) => {
-  try {
-    setLoadingDevices((prev) => [...prev, areaId]);
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/devices/devices?areaId=${areaId}`);
-    const data = await res.json();
-    setDevicesByArea((prev) => ({ ...prev, [areaId]: data }));
-  } finally {
-    setLoadingDevices((prev) => prev.filter((id) => id !== areaId));
+    // 5) Reset form + state
+    form.reset({
+      ...employeeToEdit,
+      areaAccess: prunedAreas,
+      selectedDevices: prunedDeviceMap,
+    });
+    setSelectedAreas(prunedAreas);
+    setSelectedDevices(prunedDeviceMap);
+    setSelectedMealRules(ruleMap);
+
+    // 6) Fetch devices (and their meal‐rules) for each pruned area
+    prunedAreas.forEach((areaId) => {
+      if (!devicesByArea[areaId]) fetchDevicesByArea(areaId);
+    });
+  } else {
+    form.reset();
+    setSelectedAreas([]);
+    setSelectedDevices({});
+    setSelectedMealRules({});
   }
-};
+}, [employeeToEdit, isOpen]);
 
 
+
+
+  const fetchAreas = async () => {
+    const res = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
+    return res.data;
+  };
+  const { data: areasData = [] } = useQuery({ queryKey: ["areas"], queryFn: fetchAreas });
+
+  const fetchDevicesByArea = async (areaId: number) => {
+    try {
+      setLoadingDevices((prev) => [...prev, areaId]);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/devices/devices?areaId=${areaId}`);
+      const devices = await res.json();
+
+      const devicesWithRules = await Promise.all(
+        devices.map(async (device: any) => {
+          const mealRuleRes = await fetch(`${import.meta.env.VITE_API_URL}/devices/meal-rules?deviceId=${device.id}`);
+          const mealRules = await mealRuleRes.json();
+          return { ...device, mealRules };
+        })
+      );
+
+      setDevicesByArea((prev) => ({ ...prev, [areaId]: devicesWithRules }));
+    } finally {
+      setLoadingDevices((prev) => prev.filter((id) => id !== areaId));
+    }
+  };
 
   const toggleArea = (areaId: number) => {
     const updated = selectedAreas.includes(areaId)
@@ -165,34 +194,42 @@ const fetchDevicesByArea = async (areaId: number) => {
     }
   };
 
-  const mutation = useMutation({
-  mutationFn: async (data: Omit<Employee, "employeeId">) => {
-    const baseUrl = import.meta.env.VITE_API_URL;
-    if (!baseUrl) throw new Error("API URL is not defined in the environment variables.");
-
-    const url = employeeToEdit
-      ? `${baseUrl}/employees/employees/${employeeToEdit.employeeId}`
-      : `${baseUrl}/employees/employees`;
-    
-    const method = employeeToEdit ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+  const toggleMealRule = (deviceId: number, ruleId: number) => {
+    setSelectedMealRules((prev) => {
+      const current = prev[deviceId] || [];
+      const updated = current.includes(ruleId)
+        ? current.filter((id) => id !== ruleId)
+        : [...current, ruleId];
+      return { ...prev, [deviceId]: updated };
     });
-    if (!res.ok) throw new Error("Failed to save employee");
-    return res.json();
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["employees"] });
-    onClose();
-  },
-});
+  };
 
+  const mutation = useMutation({
+    mutationFn: async (data: Omit<Employee, "employeeId">) => {
+      const baseUrl = import.meta.env.VITE_API_URL;
+      if (!baseUrl) throw new Error("API URL is not defined in the environment variables.");
 
+      const url = employeeToEdit
+        ? `${baseUrl}/employees/employees/${employeeToEdit.employeeId}`
+        : `${baseUrl}/employees/employees`;
 
-  const onSubmit = (values: FormValues) => {
+      const method = employeeToEdit ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save employee");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      onClose();
+    },
+  });
+
+  const onSubmit = (values: any) => {
     const invalidAreas = selectedAreas.filter(
       (areaId) => !selectedDevices[areaId] || selectedDevices[areaId].length === 0
     );
@@ -205,20 +242,22 @@ const fetchDevicesByArea = async (areaId: number) => {
       ...values,
       areaAccess: selectedAreas,
       selectedDevices,
+      selectedMealRules,
     };
+
     mutation.mutate(payload);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[1000px]">
         <DialogHeader>
           <DialogTitle>{employeeToEdit ? "Edit Employee" : "Create New Employee"}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-3">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -302,67 +341,66 @@ const fetchDevicesByArea = async (areaId: number) => {
                 )}
               />
             </div>
+
             <FormField
               control={form.control}
               name="areaAccess"
               render={() => (
                 <FormItem>
                   <FormLabel>Area Access</FormLabel>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {areasData?.map((area) => {
-                      const isChecked = selectedAreas.includes(area.id);
-                      const isIndeterminate =
-                        selectedDevices[area.id]?.length > 0 &&
-                        selectedDevices[area.id]?.length !== devicesByArea[area.id]?.length;
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+                    {areasData.map((area: any) => (
+                      <div key={area.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`area-${area.id}`}
+                          checked={selectedAreas.includes(area.id)}
+                          onCheckedChange={() => toggleArea(area.id)}
+                        />
+                        <label htmlFor={`area-${area.id}`} className="text-sm cursor-pointer">
+                          {area.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
 
-                      return (
-                        <div key={area.id} className="border rounded-md p-3">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <Checkbox
-                              id={`area-${area.id}`}
-                              checked={isChecked}
-                              indeterminate={isIndeterminate}
-                              onCheckedChange={() => toggleArea(area.id)}
-                              disabled={devicesByArea[area.id]?.length === 0}
-                            />
-                            <label htmlFor={`area-${area.id}`} className="text-sm font-medium cursor-pointer">
-                              {area.name}
-                            </label>
-                          </div>
-                          {isChecked && (
-                            <div className="ml-6 mt-1">
-                              {loadingDevices.includes(area.id) ? (
-                                <p className="text-sm text-gray-500">Loading devices...</p>
-                              ) : (
-                                <div>
-                                  {devicesByArea[area.id]?.length ? (
-                                    <div>
-                                      <p className="text-sm text-gray-700">Select devices:</p>
-                                      <div className="space-y-2">
-                                        {devicesByArea[area.id].map((device) => (
-                                          <div key={device.id} className="flex items-center space-x-2">
-                                            <Checkbox
-                                              id={`device-${device.id}`}
-                                              checked={selectedDevices[area.id]?.includes(device.id)}
-                                              onCheckedChange={() => toggleDevice(area.id, device.id)}
-                                            />
-                                            <label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
-                                              {device.deviceName}
-                                            </label>
-                                          </div>
-                                        ))}
-                                      </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {selectedAreas.map((areaId) => (
+                      <div key={areaId}>
+                        <div className="grid grid-cols-1 gap-2">
+                          {devicesByArea[areaId]?.map((device) => (
+                            <div key={device.id} className="flex flex-col space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`device-${device.id}`}
+                                  checked={selectedDevices[areaId]?.includes(device.id)}
+                                  onCheckedChange={() => toggleDevice(areaId, device.id)}
+                                />
+                                <label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
+                                  {device.deviceName}
+                                </label>
+                              </div>
+
+                              {device.mealRules?.length > 0 && (
+                                <div className="ml-6 space-y-1">
+                                  {device.mealRules.map((rule: any) => (
+                                    <div key={rule.id} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`rule-${device.id}-${rule.id}`}
+                                        checked={selectedMealRules[device.id]?.includes(rule.id) || false}
+                                        onCheckedChange={() => toggleMealRule(device.id, rule.id)}
+                                      />
+                                      <label htmlFor={`rule-${device.id}-${rule.id}`} className="text-xs text-gray-700 cursor-pointer">
+                                        {rule.mealType?.name}: {rule.startTime} - {rule.endTime}
+                                      </label>
                                     </div>
-                                  ) : (
-                                    <p className="text-sm text-gray-400">No devices found for this area.</p>
-                                  )}
+                                  ))}
                                 </div>
                               )}
                             </div>
-                          )}
+                          ))}
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                   <FormMessage />
                 </FormItem>

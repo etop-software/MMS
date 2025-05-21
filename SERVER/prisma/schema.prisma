@@ -8,22 +8,23 @@ datasource db {
 }
 
 model Employee {
-  id           Int            @id @default(autoincrement())
-  name         String
-  group        Int?
-  privilege    Int?
-  createdAt    DateTime       @default(now())
-  pin          Int            @unique
-  department   String?
-  email        String?
-  employeeId   Int?
-  phone        String?
-  password     String?
-  RFID         String?
-  startTime    String?        @default("09:00")
-  endTime      String?        @default("18:00")
-  areaAccess   AreaAccess[]
-  deviceAccess DeviceAccess[]
+  id                   Int                  @id @default(autoincrement())
+  name                 String
+  group                Int?
+  privilege            Int?
+  createdAt            DateTime             @default(now())
+  pin                  Int                  @unique
+  department           String?
+  email                String?
+  employeeId           Int?
+  phone                String?
+  password             String?
+  RFID                 String?
+  startTime            String?              @default("09:00")
+  endTime              String?              @default("18:00")
+  areaAccess           AreaAccess[]
+  deviceAccess         DeviceAccess[]
+  employeeMealAccesses EmployeeMealAccess[]
 }
 
 model AreaAccess {
@@ -45,31 +46,33 @@ model DeviceAccess {
 }
 
 model Device {
-  id               Int            @id @default(autoincrement())
-  deviceName       String
-  SN               String         @unique
-  areaId           Int
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  faceCount        Int?
-  fpCount          Int?
-  ipAddress        String?
-  transactionCount Int?
-  userCount        Int?
-  area             Area           @relation(fields: [areaId], references: [id])
-  deviceAccess     DeviceAccess[]
-  mealRules        MealRule[]
+  id                   Int                  @id @default(autoincrement())
+  deviceName           String
+  SN                   String               @unique
+  areaId               Int
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  faceCount            Int?
+  fpCount              Int?
+  ipAddress            String?
+  transactionCount     Int?
+  userCount            Int?
+  area                 Area                 @relation(fields: [areaId], references: [id])
+  deviceAccess         DeviceAccess[]
+  mealRules            MealRule[]
+  employeeMealAccesses EmployeeMealAccess[]
 }
 
 model Area {
-  id             Int              @id @default(autoincrement())
-  name           String
-  description    String
-  areaAccess     AreaAccess[]
-  devices        Device[]
-  deviceAccess   DeviceAccess[]
-  mealRules      MealRule[]
-  userAreaAccess UserAreaAccess[]
+  id                   Int                  @id @default(autoincrement())
+  name                 String
+  description          String
+  areaAccess           AreaAccess[]
+  devices              Device[]
+  deviceAccess         DeviceAccess[]
+  mealRules            MealRule[]
+  userAreaAccess       UserAreaAccess[]
+  employeeMealAccesses EmployeeMealAccess[]
 }
 
 model MealType {
@@ -80,18 +83,19 @@ model MealType {
 }
 
 model MealRule {
-  id         Int      @id @default(autoincrement())
-  mealTypeId Int
-  areaId     Int
-  startTime  String
-  endTime    String
-  days       String[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  deviceId   Int?
-  area       Area     @relation(fields: [areaId], references: [id])
-  device     Device?  @relation(fields: [deviceId], references: [id])
-  mealType   MealType @relation(fields: [mealTypeId], references: [mealTypeId])
+  id                   Int                  @id @default(autoincrement())
+  mealTypeId           Int
+  areaId               Int
+  startTime            String
+  endTime              String
+  days                 String[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  deviceId             Int?
+  area                 Area                 @relation(fields: [areaId], references: [id])
+  device               Device?              @relation(fields: [deviceId], references: [id])
+  mealType             MealType             @relation(fields: [mealTypeId], references: [mealTypeId])
+  employeeMealAccesses EmployeeMealAccess[]
 
   @@unique([mealTypeId, areaId, deviceId])
 }
@@ -115,14 +119,14 @@ model Logs {
 }
 
 model User {
-  id         Int              @id @default(autoincrement())
-  username   String           @unique
-  password   String
-  name       String
-  userType   String
-  createdAt  DateTime         @default(now())
-  needToChangePassword Boolean            @default(true)
-  areaAccess UserAreaAccess[]
+  id                   Int              @id @default(autoincrement())
+  username             String           @unique
+  password             String
+  name                 String
+  userType             String
+  createdAt            DateTime         @default(now())
+  needToChangePassword Boolean          @default(true)
+  areaAccess           UserAreaAccess[]
 }
 
 model UserAreaAccess {
@@ -131,4 +135,19 @@ model UserAreaAccess {
   userId Int
   area   Area @relation(fields: [areaId], references: [id])
   areaId Int
+}
+
+model EmployeeMealAccess {
+  id         Int @id @default(autoincrement())
+  employeeId Int
+  areaId     Int
+  deviceId   Int
+  mealRuleId Int
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  area     Area     @relation(fields: [areaId], references: [id])
+  device   Device   @relation(fields: [deviceId], references: [id])
+  mealRule MealRule @relation(fields: [mealRuleId], references: [id])
+
+  @@unique([employeeId, areaId, deviceId, mealRuleId])
 }
