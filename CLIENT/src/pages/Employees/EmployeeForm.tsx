@@ -44,6 +44,7 @@ const formSchema = z.object({
   email: z.string().email("Invalid email format"),
   areaAccess: z.array(z.number()).min(1, "At least one area must be selected"),
   selectedDevices: z.object({}).optional(),
+  RFID: z.string().optional(),
 });
 
 const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeToEdit }) => {
@@ -68,6 +69,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
       email: "",
       areaAccess: [],
       selectedDevices: {},
+      RFID: "",
     },
   });
 
@@ -293,6 +295,17 @@ useEffect(() => {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl><Input {...field} type="password" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+                <FormField
+                control={form.control}
+                name="RFID"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>RFID</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
