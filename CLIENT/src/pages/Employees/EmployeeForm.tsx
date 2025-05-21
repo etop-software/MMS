@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Toaster as Sonner, toast } from "sonner";
 import { z } from "zod";
 import {
   Dialog,
@@ -224,6 +225,7 @@ useEffect(() => {
       return res.json();
     },
     onSuccess: () => {
+      toast.success(employeeToEdit ? "Employee updated successfully" : "Employee created successfully");
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       onClose();
     },
