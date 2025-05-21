@@ -14,8 +14,9 @@ const buildAndEmitEmployeeCommands = async ({
   selectedDevices,
   RFID,
   selectedMealRules,
+  update
 }) => {
-  const commands = [];
+  const commandsBySN = {};
   let suffix = 1;
 
   // Flatten all device IDs from selectedDevices
@@ -38,7 +39,8 @@ const buildAndEmitEmployeeCommands = async ({
   // Base user update commands per device
   for (const device of devices) {
     const baseCommand = `C:${pin}:DATA UPDATE user CardNo=${RFID}\tPin=${pin}\tPassword=${password}\tGroup=${group}\tStartTime=${startTime}\tEndTime=${endTime}\tName=${name}\tPrivilege=${privilege}`;
-    commands.push({ SN: device.SN, command: baseCommand });
+    if (!commandsBySN[device.SN]) commandsBySN[device.SN] = [];
+    commandsBySN[device.SN].push(baseCommand);
   }
 
   // Fetch all selected mealRule records by PK
@@ -54,7 +56,9 @@ const buildAndEmitEmployeeCommands = async ({
     },
   });
 
-  // Build authorization commands per valid mealRule
+  // Track which SNs already had DELETE inserted
+  const deleteInsertedForSN = new Set();
+
   for (const rule of mealRules) {
     const expectedRuleIds = selectedMealRules[rule.deviceId];
     if (!expectedRuleIds || !expectedRuleIds.includes(rule.id)) continue;
@@ -74,18 +78,21 @@ const buildAndEmitEmployeeCommands = async ({
     });
 
     const deviceSN = devices.find((d) => d.id === rule.deviceId)?.SN;
-    if (deviceSN) {
-      commands.push({ SN: deviceSN, command: authCommand });
+    if (!deviceSN) continue;
+
+    if (!commandsBySN[deviceSN]) commandsBySN[deviceSN] = [];
+
+    // If update is true, insert DELETE command once per device
+    if (update && !deleteInsertedForSN.has(deviceSN)) {
+      const deleteAuthCommand = `C:${pin}:DATA DELETE userauthorize Pin=${pin}`;
+      commandsBySN[deviceSN].push(deleteAuthCommand);
+      deleteInsertedForSN.add(deviceSN);
     }
+
+    commandsBySN[deviceSN].push(authCommand);
   }
 
-  // Group commands by SN and emit
-  const commandsBySN = {};
-  for (const { SN, command } of commands) {
-    if (!commandsBySN[SN]) commandsBySN[SN] = [];
-    commandsBySN[SN].push(command);
-  }
-
+  // Emit batched commands per SN
   for (const [SN, cmds] of Object.entries(commandsBySN)) {
     const joined = cmds.join('\n');
     eventEmitter.emit('employeeSetupBatch', { SN, command: joined });

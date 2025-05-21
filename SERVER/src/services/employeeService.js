@@ -151,6 +151,7 @@ const updateEmployee = async (employeeId, updatedData) => {
       RFID,
       selectedDevices,
       selectedMealRules,
+      update: true,  // Indicate this is an update
     });
 
     // Delete previous relations

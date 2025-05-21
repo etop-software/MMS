@@ -12,7 +12,6 @@ async function getMealHistory({
   offset = 0,
 }) {
   try {
-    // Calling the function using raw SQL
     const result = await prisma.$queryRaw(`
       SELECT * 
       FROM public.get_user_meal_history(
@@ -26,7 +25,7 @@ async function getMealHistory({
       );
     `);
 
-    return result;  // Returns the result of the function call
+    return result;
   } catch (error) {
     console.error('Error fetching meal history:', error);
     throw new Error('Failed to fetch meal history');
