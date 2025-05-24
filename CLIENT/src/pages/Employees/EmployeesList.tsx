@@ -107,7 +107,9 @@ const EmployeesList: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Add Employee
           </Button>
+          
         }
+      
       />
 
       <Card className="dashboard-card">
@@ -118,6 +120,7 @@ const EmployeesList: React.FC = () => {
                 <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Department</TableHead>
+                <TableHead>Designation</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Area Access</TableHead>
                 <TableHead className="w-[120px] text-right">Actions</TableHead>
@@ -135,7 +138,9 @@ const EmployeesList: React.FC = () => {
                   <TableRow key={employee.id}>
                     <TableCell>{employee.employeeId ?? employee.id}</TableCell>
                     <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell>{employee.department ?? "-"}</TableCell>
+               <TableCell>{employee.department?.name || "-"}</TableCell>
+                  <TableCell>{employee.designation?.title || "-"}</TableCell>
+
                     <TableCell>{employee.email ?? "-"}</TableCell>
                     <TableCell>
                       {employee.areaAccess?.map((access) => (

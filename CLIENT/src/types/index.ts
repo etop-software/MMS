@@ -64,3 +64,11 @@ export interface DashboardStats {
   totalMealTypes: number;
   totalDepartments: number;
 }
+
+// src/types/index.ts (or wherever you keep types)
+export interface Designation {
+  id: number;
+  title: string;
+  description?: string;
+}
+

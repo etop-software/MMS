@@ -215,7 +215,7 @@ const fetchAreas = async (): Promise<Area[]> => {
               ) : (
                 paginatedData.map((mealRule) => (
                   <TableRow key={mealRule.id}>
-                    <TableCell>{(mealRule?.mealType?.name)}</TableCell>
+                    <TableCell>{(mealRule?.mealType?.name.toUpperCase())}</TableCell>
                     <TableCell>{(mealRule?.area?.name)}</TableCell>
                     <TableCell>{(mealRule?.device?.deviceName)}</TableCell> {/* Display device name */}
                     <TableCell>

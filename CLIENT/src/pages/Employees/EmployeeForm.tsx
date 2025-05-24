@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Toaster as Sonner, toast } from "sonner";
+import { toast } from "sonner";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   Dialog,
@@ -29,7 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppContext } from "@/context/AppContext";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Employee } from "@/types";
 
@@ -40,21 +40,51 @@ const formSchema = z.object({
   group: z.coerce.number().int(),
   privilege: z.coerce.number().int(),
   department: z.string().min(1, "Department is required"),
+  designation: z.string().min(1, "Designation is required"),
   phone: z.string().min(1, "Phone number is required"),
   email: z.string().email("Invalid email format"),
   areaAccess: z.array(z.number()).min(1, "At least one area must be selected"),
   selectedDevices: z.object({}).optional(),
-  RFID: z.string().optional(),
+  RFID: z.string().min(1, "RFID is required"),
+  nationality: z.string().min(1, "Nationality is required"),
 });
 
 const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeToEdit }) => {
-  const { departments } = useAppContext();
+  const { departments: staticDepartments } = useAppContext(); // If you want to keep this fallback
   const queryClient = useQueryClient();
   const [selectedAreas, setSelectedAreas] = useState<number[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Record<number, number[]>>({});
   const [selectedMealRules, setSelectedMealRules] = useState<Record<number, number[]>>({});
   const [loadingDevices, setLoadingDevices] = useState<number[]>([]);
   const [devicesByArea, setDevicesByArea] = useState<Record<number, any[]>>({});
+
+ const nationalities = [
+  "Indian", "Pakistani", "Bangladeshi", "Nepali", "Sri Lankan", "Bhutanese", "Maldivian", "Afghan",
+  "Saudi", "Emirati", "Qatari", "Kuwaiti", "Bahraini", "Omani",
+  "Jordanian", "Lebanese", "Syrian", "Iraqi", "Palestinian", "Egyptian",
+  "Libyan", "Tunisian", "Algerian", "Moroccan", "Mauritanian", "Sudanese", "Yemeni", "Somali"
+];
+
+  const fetchDepartments = async () => {
+    const res = await axios.get(`${import.meta.env.VITE_API_URL}/departments`);
+    return res.data;
+  };
+  const { data: departmentsData = [], isLoading: loadingDepartments } = useQuery({
+    queryKey: ["departments"],
+    queryFn: fetchDepartments,
+    enabled: isOpen,
+  });
+
+  // Fetch designations dynamically
+  const fetchDesignations = async () => {
+    const res = await axios.get(`${import.meta.env.VITE_API_URL}/designations`);
+    return res.data;
+  };
+  const { data: designationsData = [], isLoading: loadingDesignations } = useQuery({
+    queryKey: ["designations"],
+    queryFn: fetchDesignations,
+    enabled: isOpen,
+  });
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -64,67 +94,65 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
       password: "",
       group: 0,
       privilege: 0,
-      department: "",
+      department: 0,
+      designation:0,
       phone: "",
       email: "",
       areaAccess: [],
       selectedDevices: {},
       RFID: "",
+      nationality: "",
     },
   });
 
-useEffect(() => {
-  if (employeeToEdit) {
-    // 1) Get raw area & device access from employee
-    const initialAreas = employeeToEdit.areaAccess?.map((a) => a.areaId) || [];
-    const rawDeviceMap: Record<number, number[]> = {};
-    employeeToEdit.deviceAccess?.forEach(({ areaId, deviceId }) => {
-      if (!rawDeviceMap[areaId]) rawDeviceMap[areaId] = [];
-      rawDeviceMap[areaId].push(deviceId);
-    });
+  useEffect(() => {
+    if (employeeToEdit) {
+      console.log("Employee to edit:", employeeToEdit);
+      const initialAreas = employeeToEdit.areaAccess?.map((a) => a.areaId) || [];
+      const rawDeviceMap: Record<number, number[]> = {};
+      employeeToEdit.deviceAccess?.forEach(({ areaId, deviceId }) => {
+        if (!rawDeviceMap[areaId]) rawDeviceMap[areaId] = [];
+        rawDeviceMap[areaId].push(deviceId);
+      });
 
-    // 2) Build meal‐rule map from employeeMealAccesses
-    const ruleMap: Record<number, number[]> = {};
-    employeeToEdit.employeeMealAccesses?.forEach(({ deviceId, mealRuleId }) => {
-      if (!ruleMap[deviceId]) ruleMap[deviceId] = [];
-      ruleMap[deviceId].push(mealRuleId);
-    });
+      const ruleMap: Record<number, number[]> = {};
+      employeeToEdit.employeeMealAccesses?.forEach(({ deviceId, mealRuleId }) => {
+        if (!ruleMap[deviceId]) ruleMap[deviceId] = [];
+        ruleMap[deviceId].push(mealRuleId);
+      });
 
-    // 3) Prune devices that have no meal rules checked
-    const prunedDeviceMap: Record<number, number[]> = {};
-    for (const [areaIdStr, deviceIds] of Object.entries(rawDeviceMap)) {
-      const areaId = Number(areaIdStr);
-      const kept = deviceIds.filter((devId) => (ruleMap[devId] || []).length > 0);
-      if (kept.length) prunedDeviceMap[areaId] = kept;
+      const prunedDeviceMap: Record<number, number[]> = {};
+      for (const [areaIdStr, deviceIds] of Object.entries(rawDeviceMap)) {
+        const areaId = Number(areaIdStr);
+        const kept = deviceIds.filter((devId) => (ruleMap[devId] || []).length > 0);
+        if (kept.length) prunedDeviceMap[areaId] = kept;
+      }
+
+      const prunedAreas = Object.keys(prunedDeviceMap).map((a) => Number(a));
+
+      form.reset({
+        ...employeeToEdit,
+        areaAccess: prunedAreas,
+        selectedDevices: prunedDeviceMap,
+        designation: String(employeeToEdit.designation?.id), 
+        department: String(employeeToEdit.department?.id) ,
+      });
+      setSelectedAreas(prunedAreas);
+      setSelectedDevices(prunedDeviceMap);
+      setSelectedMealRules(ruleMap);
+
+      prunedAreas.forEach((areaId) => {
+        if (!devicesByArea[areaId]) fetchDevicesByArea(areaId);
+      });
+    } else {
+      form.reset();
+      setSelectedAreas([]);
+      setSelectedDevices({});
+      setSelectedMealRules({});
     }
+  }, [employeeToEdit, isOpen]);
 
-    // 4) Prune areas that, after device pruning, have no devices left
-    const prunedAreas = Object.keys(prunedDeviceMap).map((a) => Number(a));
-
-    // 5) Reset form + state
-    form.reset({
-      ...employeeToEdit,
-      areaAccess: prunedAreas,
-      selectedDevices: prunedDeviceMap,
-    });
-    setSelectedAreas(prunedAreas);
-    setSelectedDevices(prunedDeviceMap);
-    setSelectedMealRules(ruleMap);
-
-    // 6) Fetch devices (and their meal‐rules) for each pruned area
-    prunedAreas.forEach((areaId) => {
-      if (!devicesByArea[areaId]) fetchDevicesByArea(areaId);
-    });
-  } else {
-    form.reset();
-    setSelectedAreas([]);
-    setSelectedDevices({});
-    setSelectedMealRules({});
-  }
-}, [employeeToEdit, isOpen]);
-
-
-
+  // Rest of your existing code...
 
   const fetchAreas = async () => {
     const res = await axios.get(`${import.meta.env.VITE_API_URL}/areas`);
@@ -299,7 +327,9 @@ useEffect(() => {
                   </FormItem>
                 )}
               />
-                <FormField
+              
+              {/* RFID */}
+              <FormField
                 control={form.control}
                 name="RFID"
                 render={({ field }) => (
@@ -311,17 +341,28 @@ useEffect(() => {
                 )}
               />
 
+              {/* Department */}
               <FormField
                 control={form.control}
                 name="department"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Department</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger></FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={loadingDepartments}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                      </FormControl>
                       <SelectContent>
-                        {departments.map((d) => (
-                          <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                        {departmentsData.map((d: any) => (
+                          <SelectItem key={d.id} value={String(d.id)}>
+                            {d.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -329,6 +370,60 @@ useEffect(() => {
                   </FormItem>
                 )}
               />
+
+              {/* Designation */}
+              <FormField
+                control={form.control}
+                name="designation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Designation</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={loadingDesignations}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select designation" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {designationsData.map((d: any) => (
+                          <SelectItem key={d.id} value={String(d.id)}>
+                            {d.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+<FormField
+  control={form.control}
+  name="nationality"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Nationality</FormLabel>
+      <Select onValueChange={field.onChange} value={field.value}>
+        <FormControl>
+          <SelectTrigger>
+            <SelectValue placeholder="Select nationality" />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          {nationalities.map((n) => (
+            <SelectItem key={n} value={n}>
+              {n}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
 
               {/* Phone */}
               <FormField
@@ -372,7 +467,7 @@ useEffect(() => {
                           onCheckedChange={() => toggleArea(area.id)}
                         />
                         <label htmlFor={`area-${area.id}`} className="text-sm cursor-pointer">
-                          {area.name}
+                          {area.name.toUpperCase()}
                         </label>
                       </div>
                     ))}
@@ -391,21 +486,21 @@ useEffect(() => {
                                   onCheckedChange={() => toggleDevice(areaId, device.id)}
                                 />
                                 <label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
-                                  {device.deviceName}
+                                  {device.deviceName.toUpperCase()}
                                 </label>
                               </div>
 
                               {device.mealRules?.length > 0 && (
-                                <div className="ml-6 space-y-1">
-                                  {device.mealRules.map((rule: any) => (
-                                    <div key={rule.id} className="flex items-center space-x-2">
+                                <div className="ml-6 flex flex-wrap gap-2">
+                                  {device.mealRules.map((rule) => (
+                                    <div key={rule.id} className="flex items-center space-x-1">
                                       <Checkbox
-                                        id={`rule-${device.id}-${rule.id}`}
-                                        checked={selectedMealRules[device.id]?.includes(rule.id) || false}
+                                        id={`mealRule-${device.id}-${rule.id}`}
+                                        checked={selectedMealRules[device.id]?.includes(rule.id)}
                                         onCheckedChange={() => toggleMealRule(device.id, rule.id)}
                                       />
-                                      <label htmlFor={`rule-${device.id}-${rule.id}`} className="text-xs text-gray-700 cursor-pointer">
-                                        {rule.mealType?.name}: {rule.startTime} - {rule.endTime}
+                                       <label htmlFor={`rule-${device.id}-${rule.id}`} className="text-xs text-gray-700 cursor-pointer">
+                                        {rule.mealType?.name.toUpperCase()}: {rule.startTime} - {rule.endTime}
                                       </label>
                                     </div>
                                   ))}
@@ -417,17 +512,16 @@ useEffect(() => {
                       </div>
                     ))}
                   </div>
-                  <FormMessage />
                 </FormItem>
               )}
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+              <Button variant="outline" onClick={onClose} type="button">
+                Cancel
+              </Button>
               <Button type="submit" disabled={mutation.isLoading}>
-                {mutation.isLoading
-                  ? (employeeToEdit ? "Updating..." : "Creating...")
-                  : (employeeToEdit ? "Update Employee" : "Create Employee")}
+                {employeeToEdit ? "Update" : "Create"}
               </Button>
             </DialogFooter>
           </form>
@@ -438,3 +532,4 @@ useEffect(() => {
 };
 
 export default EmployeeForm;
+

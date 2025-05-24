@@ -18,13 +18,21 @@ async function getNextSlot(tx, areaId) {
   }
   
   async function createMealType({ areaId, name, description }) {
-    return prisma.$transaction(async tx => {
-      const slot = await getNextSlot(tx, areaId);
-      return tx.mealType.create({
-        data: { mealTypeId: slot, areaId, name, description },
-      });
+  const normalizedName = name.trim().toLowerCase(); // Normalize to lowercase and trim
+
+  return prisma.$transaction(async tx => {
+    const slot = await getNextSlot(tx, areaId);
+    return tx.mealType.create({
+      data: {
+        mealTypeId: slot,
+        areaId,
+        name: normalizedName,
+        description,
+      },
     });
-  }
+  });
+}
+
 
 
 const getAllMealTypes = () => {

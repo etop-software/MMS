@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Toaster as Sonner, toast } from "sonner"
 import {
   LayoutDashboard, Building2, Users, Coffee, CalendarClock, Settings,
-  ChevronRight, FileSpreadsheet, UserCog, Tablet, LogOut, User
+  ChevronRight, FileSpreadsheet, UserCog, Tablet, LogOut, User, Import,LandPlot
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,8 +38,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
-  
-const username = localStorage.getItem("name");
+
+  const username = localStorage.getItem("name");
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) => ({
@@ -50,26 +50,37 @@ const username = localStorage.getItem("name");
 
   const handleLogout = () => {
     toast.success("Logged out successfully");
-  localStorage.removeItem('token');
-  localStorage.removeItem('userAccess');
-  localStorage.removeItem('user_id');
-  localStorage.removeItem('needToChangePassword');
-  localStorage.removeItem('name');
-  localStorage.removeItem('userType');
-  
+    localStorage.removeItem('token');
+    localStorage.removeItem('userAccess');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('needToChangePassword');
+    localStorage.removeItem('name');
+    localStorage.removeItem('userType');
+
     navigate("/login");
   };
 
   const navLinks: NavLink[] = [
     { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
-    { to: "/areas", label: "Areas", icon: <Building2 className="h-5 w-5" /> },
+    { to: "/areas", label: "Areas", icon: <LandPlot className="h-5 w-5" /> },
     { to: "/devices", label: "Devices", icon: <Tablet className="h-5 w-5" /> },
-    { to: "/departments", label: "Departments", icon: <Users className="h-5 w-5" /> },
-    { to: "/employees", label: "Employees", icon: <Users className="h-5 w-5" /> },
+
+    {
+      to: "", label: "Organization",
+      icon: <Building2 className="h-5 w-5" />,
+      children: [
+        { to: "/employees", label: "Employees", icon: <Users className="h-5 w-5" /> },
+        { to: "/employees/import", label: "Import Employees", icon: <Import className="h-5 w-5" /> },
+        { to: "/departments", label: "Departments", icon: <Users className="h-5 w-5" /> },
+        { to: "/designations", label: "Designations", icon: <Users className="h-5 w-5" /> },
+
+      ]
+
+    },
     { to: "/meal-types", label: "Meal Types", icon: <Coffee className="h-5 w-5" /> },
     { to: "/meal-rules", label: "Meal Rules", icon: <CalendarClock className="h-5 w-5" /> },
     { to: "/users", label: "Users", icon: <UserCog className="h-5 w-5" /> },
-    { to: "/meal-restrictions", label: "Meal Restrictions", icon: <Settings className="h-5 w-5" /> },
+    // { to: "/meal-restrictions", label: "Meal Restrictions", icon: <Settings className="h-5 w-5" /> },
     {
       label: "Reports",
       icon: <FileSpreadsheet className="h-5 w-5" />,

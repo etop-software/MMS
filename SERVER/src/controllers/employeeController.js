@@ -1,18 +1,21 @@
 const NodeCache = require("node-cache");
 const employeeService = require("../services/employeeService");
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+const xlsx = require('xlsx');
+const fs = require('fs');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// Cache setup: 5-minute TTL
-const cache = new NodeCache({ stdTTL: 300 });
+
+const cache = new NodeCache({ stdTTL: 3 });
 
 const createEmployee = async (req, res) => {
   try {
     const employeeData = req.body;
 
-    console.log("Received employee data:", employeeData);
-
     const result = await employeeService.addEmployee(employeeData);
 
-    // Invalidate cache
     cache.del("allEmployees");
 
     res.status(200).json({
@@ -25,6 +28,203 @@ const createEmployee = async (req, res) => {
   }
 };
 
+
+const importEmployees = async (req, res) => {
+  try {
+    if (!req.file || !req.file.path) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const workbook = xlsx.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    // Normalize helper: trim, single spaces, lowercase
+    const normalize = str => (str || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+    // Your dropdown nationality list, exactly as front-end uses it
+    const nationalities = [
+      "Indian", "Pakistani", "Bangladeshi", "Nepali", "Sri Lankan", "Bhutanese", "Maldivian", "Afghan",
+      "Saudi", "Emirati", "Qatari", "Kuwaiti", "Bahraini", "Omani",
+      "Jordanian", "Lebanese", "Syrian", "Iraqi", "Palestinian", "Egyptian",
+      "Libyan", "Tunisian", "Algerian", "Moroccan", "Mauritanian", "Sudanese", "Yemeni", "Somali"
+    ];
+
+    function normalizeNationality(input) {
+      if (!input) return null;
+      const inputNorm = normalize(input);
+      // Find nationality in the list ignoring case
+      const matched = nationalities.find(nat => normalize(nat) === inputNorm);
+      if (matched) {
+        return matched;  // Return the properly cased nationality
+      } else {
+        console.warn(`⚠️ Unknown nationality: "${input}"`);
+        return null; // or throw error to reject invalid nationality
+      }
+    }
+
+    // Fetch all needed DB data
+    const [areas, devices, mealTypes, mealRules, departments, designations] = await Promise.all([
+      prisma.area.findMany({ select: { id: true, name: true } }),
+      prisma.device.findMany({ select: { id: true, deviceName: true } }),
+      prisma.mealType.findMany({ select: { mealTypeId: true, name: true } }),
+      prisma.mealRule.findMany({ select: { id: true, mealTypeId: true, areaId: true, deviceId: true } }),
+      prisma.department.findMany({ select: { id: true, name: true } }),
+      prisma.designation.findMany({ select: { id: true, title: true } }),
+    ]);
+
+    // Create lookup maps for areas, devices, mealTypes
+    const areaMap = Object.fromEntries(areas.map(a => [normalize(a.name), a.id]));
+    const deviceMap = Object.fromEntries(devices.map(d => [normalize(d.deviceName), d.id]));
+    const mealTypeMap = Object.fromEntries(mealTypes.map(mt => [normalize(mt.name), mt.mealTypeId]));
+
+    // Group rows by Employee ID (pin)
+    const groupedData = data.reduce((acc, row) => {
+      const pin = Number(row['Employee ID']);
+      if (!acc[pin]) acc[pin] = [];
+      acc[pin].push(row);
+      return acc;
+    }, {});
+
+    // Prepare employee list for bulk insert
+    const employeeList = Object.entries(groupedData).map(([pin, rows]) => {
+      const requiredFields = [
+        'Employee ID', 'Full Name', 'Password', 'Department', 'Designation', 'Nationality',
+        'Access Area', 'Allowed Device', 'Meal Plan Rule'
+      ];
+
+      // Validate required fields are present
+      rows.forEach(row => {
+        requiredFields.forEach(field => {
+          if (!row[field]) throw new Error(`Missing "${field}" for Employee ID ${pin}`);
+        });
+      });
+
+      const firstRow = rows[0];
+      const fieldsToCheck = [
+        'Full Name', 'Password', 'Team Number', 'Work Start Time', 'Work End Time',
+        'Access Level', 'Department', 'Phone Number', 'Email', 'RFID Code'
+      ];
+
+      // Check consistency across rows for same employee
+      rows.forEach(row => {
+        fieldsToCheck.forEach(field => {
+          if (row[field] !== firstRow[field]) {
+            throw new Error(`Inconsistent "${field}" for Employee ID ${pin}`);
+          }
+        });
+      });
+
+      // Normalize and validate Nationality using your dropdown list
+      const normalizedNationality = normalizeNationality(firstRow['Nationality']);
+      if (!normalizedNationality) {
+        throw new Error(`Invalid Nationality "${firstRow['Nationality']}" for Employee ID ${pin}`);
+      }
+
+      // Meal Plan rules normalization & filtering
+      const rawMealRules = rows.map(row => normalize(row['Meal Plan Rule']));
+      const mealRulesSet = [...new Set(rawMealRules)].filter(rule => {
+        if (!mealTypeMap[rule]) {
+          console.warn(`⚠️ Unknown meal type: "${rule}"`);
+          return false;
+        }
+        return true;
+      });
+
+      // Areas and devices normalization
+      const areasSet = [...new Set(rows.map(row => normalize(row['Access Area'])))];
+      const devicesSet = [...new Set(rows.map(row => normalize(row['Allowed Device'])))];
+
+      // Validate areas and devices exist
+      areasSet.forEach(area => {
+        if (!areaMap[area]) throw new Error(`Invalid area name "${area}" for Employee ID ${pin}`);
+      });
+      devicesSet.forEach(device => {
+        if (!deviceMap[device]) throw new Error(`Invalid device name "${device}" for Employee ID ${pin}`);
+      });
+
+      // Find department in DB list (normalized)
+      const departmentEntry = departments.find(d => normalize(d.name) === normalize(firstRow['Department']));
+      if (!departmentEntry) throw new Error(`Invalid Department "${firstRow['Department']}" for Employee ID ${pin}`);
+      const departmentId = departmentEntry.id;
+
+      // Find designation in DB list (normalized)
+      const designationEntry = designations.find(d => normalize(d.title) === normalize(firstRow['Designation']));
+      if (!designationEntry) throw new Error(`Invalid Designation "${firstRow['Designation']}" for Employee ID ${pin}`);
+      const designationId = designationEntry.id;
+
+      // Prepare meal accesses
+      const mealAccesses = mealRulesSet.map(mealRule => {
+        const row = rows.find(r => normalize(r['Meal Plan Rule']) === mealRule);
+        const areaId = areaMap[normalize(row['Access Area'])];
+        const deviceId = deviceMap[normalize(row['Allowed Device'])];
+        const mealTypeId = mealTypeMap[mealRule];
+        return { areaId, deviceId, mealTypeId };
+      }).filter(Boolean);
+
+      return {
+        pin: Number(firstRow['Employee ID']),
+        name: firstRow['Full Name'],
+        password: String(firstRow['Password']),
+        group: Number(firstRow['Team Number']),
+        startTime: firstRow['Work Start Time'],
+        endTime: firstRow['Work End Time'],
+        privilege: Number(firstRow['Access Level']),
+        departmentId,
+        designationId,
+        phone: firstRow['Phone Number'],
+        email: firstRow['Email'],
+        RFID: firstRow['RFID Code'],
+        nationality: normalizedNationality, // Store capitalized nationality
+
+        areaAccess: {
+          create: areasSet.map(area => ({
+            areaId: areaMap[area],
+          })),
+        },
+
+        deviceAccess: {
+          create: devicesSet.map(device => {
+            const row = rows.find(r => normalize(r['Allowed Device']) === device);
+            return {
+              deviceId: deviceMap[device],
+              areaId: areaMap[normalize(row['Access Area'])],
+            };
+          }),
+        },
+
+        employeeMealAccesses: {
+          create: mealAccesses,
+        },
+      };
+    });
+
+    console.log(employeeList);
+
+    const { data: addedEmployees } = await employeeService.addEmployeesInBulk(employeeList);
+    cache.del("allEmployees");
+
+    const results = addedEmployees.map(emp => ({
+      pin: emp.pin,
+      status: 'success',
+      id: emp.id,
+    }));
+
+    fs.unlinkSync(req.file.path);
+
+    res.status(200).json({
+      message: 'Employee import completed',
+      results,
+    });
+  } catch (error) {
+    console.error("Error importing employees:", error.message);
+    res.status(400).json({
+      error: error?.message || String(error.message) || 'Failed to import employees'
+    });
+  }
+};
+
+
 const updateEmployee = async (req, res) => {
   try {
     const { employeeId } = req.params;
@@ -35,7 +235,6 @@ const updateEmployee = async (req, res) => {
     const updatedEmployee = await employeeService.updateEmployee(employeeId, updatedData);
 
     if (updatedEmployee) {
-      // Invalidate relevant cache
       cache.del("allEmployees");
       cache.del(`employee:${employeeId}`);
 
@@ -136,4 +335,5 @@ module.exports = {
   getEmployeeById,
   deleteEmployee,
   updateEmployee,
+  importEmployees: [upload.single('file'), importEmployees],
 };

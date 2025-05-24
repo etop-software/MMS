@@ -1,6 +1,4 @@
-
 import React, { useState } from "react";
-import { useAppContext } from "@/context/AppContext";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,15 +16,54 @@ import DepartmentForm from "./DepartmentForm";
 import { Department } from "@/types";
 import TablePagination from "@/components/common/TablePagination";
 import { usePagination } from "@/hooks/use-pagination";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+
+async function fetchDepartments(): Promise<Department[]> {
+  const res = await fetch(`${API_BASE_URL}/departments`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch departments");
+  }
+  return res.json();
+}
+
+async function deleteDepartment(id: number) {
+  const res = await fetch(`${API_BASE_URL}/departments/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to delete department");
+  }
+  return res.json();
+}
 
 const DepartmentsList: React.FC = () => {
-  const { departments, removeDepartment } = useAppContext();
+  const queryClient = useQueryClient();
+
+  // Fetch departments with React Query
+  const { data: departments = [], isLoading, isError } = useQuery({
+    queryKey: ["departments"],
+    queryFn: fetchDepartments,
+  });
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
 
-  // Setup pagination
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteDepartment,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["departments"]);
+      setIsDeleteDialogOpen(false);
+      setSelectedDepartment(null);
+    },
+  });
+
+  // Setup pagination with fetched departments
   const {
     currentPage,
     pageSize,
@@ -34,7 +71,7 @@ const DepartmentsList: React.FC = () => {
     paginatedData,
     totalItems,
     setCurrentPage,
-    setPageSize
+    setPageSize,
   } = usePagination(departments);
 
   const handleEdit = (department: Department) => {
@@ -49,9 +86,12 @@ const DepartmentsList: React.FC = () => {
 
   const confirmDelete = () => {
     if (selectedDepartment) {
-      removeDepartment(selectedDepartment.id);
+      deleteMutation.mutate(selectedDepartment.id);
     }
   };
+
+  if (isLoading) return <p>Loading departments...</p>;
+  if (isError) return <p>Error loading departments.</p>;
 
   return (
     <div>
@@ -101,6 +141,7 @@ const DepartmentsList: React.FC = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(department)}
+                          disabled={deleteMutation.isLoading}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -113,8 +154,7 @@ const DepartmentsList: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
-      
-      {/* Pagination moved outside the card */}
+
       {totalItems > 0 && (
         <TablePagination
           currentPage={currentPage}
@@ -150,6 +190,7 @@ const DepartmentsList: React.FC = () => {
         description={`Are you sure you want to delete the department "${selectedDepartment?.name}"? This action cannot be undone.`}
         confirmLabel="Delete"
         variant="destructive"
+        loading={deleteMutation.isLoading}
       />
     </div>
   );

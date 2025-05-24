@@ -137,7 +137,7 @@ const MealTypesList: React.FC = () => {
                 paginatedData.map((mealType) => (
                   <TableRow key={mealType.mealTypeId}>
                     <TableCell className="font-medium">
-                      {mealType.name}
+                      {mealType.name.toUpperCase()}
                     </TableCell>
                     <TableCell>{mealType.description}</TableCell>
                     <TableCell className="text-right">

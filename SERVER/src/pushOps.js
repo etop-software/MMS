@@ -1,6 +1,6 @@
 const express = require("express");
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient(); // adjust path as needed
+const prisma = new PrismaClient();
 const crypto = require("crypto");
 const { getLatestData, setLatestData } = require('./eventConsumer');
 const logService = require('./services/logService');
@@ -278,14 +278,14 @@ module.exports = function (app) {
       await prisma.device.update({
         where: { SN },
         data: {
-          updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // Add 4 hours
+          updatedAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
         },
       });
       console.log("Device updated");
     } else {
       console.log("Device not found, no update performed");
     }
-
+    //const cmd = `C:337:DATA DELETE user *`;
     const { command, SN: lastSN } = getLatestData();
     const finalCommand = command || 'OK';
     res.send(finalCommand);

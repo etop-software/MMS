@@ -19,6 +19,8 @@ import Login from "./pages/Users/Login";
 import ChangePassword from "./pages/Users/ChangePassword";
 import { AppProvider } from "./context/AppContext";
 import Users from "./pages/Users/UsersList";
+import EmployeeImportPage from "./pages/Employees/EmployeeImportPage";
+import DesignationsList from "./pages/Designations/DesignationList";
 
 // Create a QueryClient instance for React Query
 const queryClient = new QueryClient();
@@ -26,7 +28,8 @@ const queryClient = new QueryClient();
 // ProtectedRoute component to ensure user is authenticated
 const ProtectedRoute = ({ element }) => {
   // Check if the user has a valid token in localStorage
-  const isAuthenticated = localStorage.getItem("token");
+  const isAuthenticated = true; // Replace with your authentication logic
+ // localStorage.getItem("token");
 
   // If the user is authenticated, render the passed element (child route)
   if (isAuthenticated) {
@@ -70,9 +73,17 @@ const App = () => (
               path="/departments"
               element={<ProtectedRoute element={<Layout><DepartmentsList /></Layout>} />}  // Protected route
             />
+              <Route
+              path="/designations"
+              element={<ProtectedRoute element={<Layout><DesignationsList /></Layout>} />}  // Protected route
+            />
             <Route
               path="/employees"
               element={<ProtectedRoute element={<Layout><EmployeesList /></Layout>} />}  // Protected route
+            />
+             <Route
+              path="/employees/import"
+              element={<ProtectedRoute element={<Layout><EmployeeImportPage  /></Layout>} />}  // Protected route
             />
             <Route
               path="/meal-types"

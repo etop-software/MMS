@@ -14,17 +14,29 @@ model Employee {
   privilege            Int?
   createdAt            DateTime             @default(now())
   pin                  Int                  @unique
-  department           String?
   email                String?
   employeeId           Int?
+  departmentId         Int?                 // Add this
+  department           Department?          @relation(fields: [departmentId], references: [id])
+  designationId  Int?          // Add this field
+  designation    Designation?  @relation(fields: [designationId], references: [id])
   phone                String?
   password             String?
   RFID                 String?
+  nationality          String?
   startTime            String?              @default("09:00")
   endTime              String?              @default("18:00")
   areaAccess           AreaAccess[]
   deviceAccess         DeviceAccess[]
   employeeMealAccesses EmployeeMealAccess[]
+}
+model Designation {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String?
+  employees   Employee[]  // One-to-many relation
+
+  @@unique([title])
 }
 
 model AreaAccess {
@@ -44,6 +56,12 @@ model DeviceAccess {
   device     Device   @relation(fields: [deviceId], references: [id])
   employee   Employee @relation(fields: [employeeId], references: [id])
 }
+model Department {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  employees   Employee[]
+}
 
 model Device {
   id                   Int                  @id @default(autoincrement())
@@ -52,6 +70,7 @@ model Device {
   areaId               Int
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
+  
   faceCount            Int?
   fpCount              Int?
   ipAddress            String?

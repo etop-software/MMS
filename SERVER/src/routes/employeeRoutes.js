@@ -6,9 +6,12 @@ const {
   getEmployeeById,
   deleteEmployee,
   updateEmployee,
+  importEmployees,
 } = require('../controllers/employeeController');
 
 router.post('/employees', createEmployee);
+
+router.post('/import-employees',importEmployees)
 
 router.put('/employees/:employeeId', updateEmployee);
 router.get('/employees', getAllEmployees);

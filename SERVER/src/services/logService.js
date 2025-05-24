@@ -1,24 +1,22 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+const eventEmitter = require('../eventEmitter'); // Adjust the path as necessary
+
+
+
 class LogService {
   async createLog(data) {
     try {
-       
-        const date = new Date(data.time);
-      console.log("Original date (will be inserted):", date);
 
-      // For debugging only — if you want to see what +4 hours would look like
-      const adjustedDate = new Date(date.getTime() + 4 * 60 * 60 * 1000);
-      console.log("Adjusted date (for reference only):", adjustedDate);
-  
+      const date = new Date(data.time);
+
+
       if (data.pin === '0') {
-        console.warn("Skipping log insertion: pin is '0'");
         return null;
       }
 
       if (data.event !== '1') {
-        console.warn("Skipping log insertion: event is not '1'");
         return null;
       }
 
@@ -39,7 +37,14 @@ class LogService {
           convtemperature: Number(data.convtemperature),
         },
       });
+      const expireCommand = `C:${data.pin}:DATA DELETE userauthorize Pin=${data.pin}`;
+      eventEmitter.emit('employeeSetupBatch', {
+        SN: data.SN,
+        command: expireCommand,
+      });
       return log;
+
+
     } catch (err) {
       console.error("Log creation error:", err);
       throw new Error('Failed to create log entry');

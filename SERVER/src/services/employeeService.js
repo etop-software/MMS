@@ -1,9 +1,10 @@
-const { buildAndEmitEmployeeCommands} = require('../commandsService/employeeCommandService');
+const { buildAndEmitEmployeeCommands, buildAndEmitEmployeeCommandsbulkUpdate } = require('../commandsService/employeeCommandService');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 
 const addEmployee = async (employeeData) => {
+  console.log("Adding employee:", employeeData);
   const {
     pin,
     password = '1234',
@@ -13,53 +14,97 @@ const addEmployee = async (employeeData) => {
     name,
     privilege = 0,
     department,
+    designation,
     phone,
     email,
     RFID,
+    nationality = '',
     areaAccess = [],
     selectedDevices = {},
-    selectedMealRules = {},  // changed to object { deviceId: [mealRuleIds] }
+    selectedMealRules = {},
+    bulkUpdate = false,
   } = employeeData;
 
-  // Call to build commands and emit
+  const pinNum = Number(pin);
+  const depnum = Number(department);
+  const desnum = Number(designation);
+
+
+  const areaIds = [...new Set(areaAccess.map(Number))];
+  const existingAreas = await prisma.area.findMany({
+    where: { id: { in: areaIds } }
+  });
+  const validAreaIds = new Set(existingAreas.map(a => a.id));
+  const safeAreaAccess = areaIds.filter(id => validAreaIds.has(id));
+
+  // ✅ Validate Device IDs
+  const allDeviceIds = Object.values(selectedDevices).flat().map(Number);
+  const existingDevices = await prisma.device.findMany({
+    where: { id: { in: allDeviceIds } }
+  });
+  const validDeviceIds = new Set(existingDevices.map(d => d.id));
+
+  const safeSelectedDevices = {};
+  for (const [areaId, deviceIds] of Object.entries(selectedDevices)) {
+    const filtered = deviceIds.filter(id => validDeviceIds.has(id));
+    if (filtered.length > 0) safeSelectedDevices[areaId] = filtered;
+  }
+
+  // ✅ Validate Meal Rule IDs
+  const allMealRuleIds = Object.values(selectedMealRules).flat().map(Number);
+  const existingMealRules = await prisma.mealRule.findMany({
+    where: { id: { in: allMealRuleIds } }
+  });
+  const validMealRuleIds = new Set(existingMealRules.map(r => r.id));
+
+  const safeSelectedMealRules = {};
+  for (const [deviceId, mealRuleIds] of Object.entries(selectedMealRules)) {
+    const filtered = mealRuleIds.filter(id => validMealRuleIds.has(id));
+    if (filtered.length > 0) safeSelectedMealRules[deviceId] = filtered;
+  }
+
+
+
   await buildAndEmitEmployeeCommands({
-    pin,
+    pin: pinNum,
     password,
     group,
     startTime,
     endTime,
     name,
     privilege,
-    areaAccess,
+    areaAccess: safeAreaAccess,
     prisma,
     RFID,
-    selectedDevices,
-    selectedMealRules,
+    selectedDevices: safeSelectedDevices,
+    selectedMealRules: safeSelectedMealRules,
   });
 
-  // Create employee with areaAccess and deviceAccess relations
+
   const newEmployee = await prisma.employee.create({
     data: {
-      employeeId: pin,
-      pin,
+      employeeId: pinNum,
+      pin: pinNum,
       name,
       group,
       privilege,
       startTime,
       endTime,
-      department,
+      departmentId: depnum,
+      designationId: desnum,
+      nationality,
       phone,
       email,
       password,
       RFID,
       areaAccess: {
-        create: areaAccess.map((areaId) => ({
+        create: safeAreaAccess.map(areaId => ({
           area: { connect: { id: areaId } },
         })),
       },
       deviceAccess: {
-        create: Object.entries(selectedDevices).flatMap(([areaId, deviceIds]) =>
-          deviceIds.map((deviceId) => ({
+        create: Object.entries(safeSelectedDevices).flatMap(([areaId, deviceIds]) =>
+          deviceIds.map(deviceId => ({
             area: { connect: { id: parseInt(areaId) } },
             device: { connect: { id: deviceId } },
           }))
@@ -68,26 +113,20 @@ const addEmployee = async (employeeData) => {
     },
   });
 
-  // Now create EmployeeMealAccess records
   const employeeMealAccessData = [];
 
-  // selectedMealRules is { deviceId: [mealRuleIds] }
-  for (const [deviceIdStr, mealRuleIds] of Object.entries(selectedMealRules)) {
+  for (const [deviceIdStr, mealRuleIds] of Object.entries(safeSelectedMealRules)) {
     const deviceId = parseInt(deviceIdStr);
-    
-    // Find areaId for this device from selectedDevices mapping
-    // selectedDevices: { areaId: [deviceIds] }
     let areaIdForDevice = null;
-    for (const [areaIdStr, deviceIds] of Object.entries(selectedDevices)) {
+
+    for (const [areaIdStr, deviceIds] of Object.entries(safeSelectedDevices)) {
       if (deviceIds.includes(deviceId)) {
         areaIdForDevice = parseInt(areaIdStr);
         break;
       }
     }
-    if (!areaIdForDevice) {
-      // If device isn't mapped to an area in selectedDevices, skip or handle error
-      continue;
-    }
+
+    if (!areaIdForDevice) continue;
 
     for (const mealRuleId of mealRuleIds) {
       employeeMealAccessData.push({
@@ -99,17 +138,146 @@ const addEmployee = async (employeeData) => {
     }
   }
 
-  // Bulk create all meal access records
   if (employeeMealAccessData.length > 0) {
     await prisma.employeeMealAccess.createMany({
       data: employeeMealAccessData,
-      skipDuplicates: true,  // optional, to avoid duplicate errors
+      skipDuplicates: true,
     });
   }
-
   return { success: true, data: newEmployee };
 };
 
+const addEmployeesInBulk = async (employeeList) => {
+
+  const newEmployees = [];
+  const validEmployeesForCommand = [];
+
+
+  const allMealRules = await prisma.mealRule.findMany({
+    select: { id: true, mealTypeId: true, areaId: true, deviceId: true }
+  });
+
+  const mealRuleLookup = new Map();
+  for (const rule of allMealRules) {
+    const key = `${rule.mealTypeId}-${rule.areaId}-${rule.deviceId}`;
+    mealRuleLookup.set(key, rule.id);
+  }
+
+  const depid = Number(employeeList[0].department);
+  const desid = Number(employeeList[0].designation);
+
+  for (const employeeData of employeeList) {
+    const {
+      pin,
+      password = '1234',
+      group = 0,
+      startTime = '09:00',
+      endTime = '18:00',
+      name,
+      privilege = 0,
+      departmentId,       // <-- use departmentId
+      designationId,      // <-- use designationId
+      phone,
+      email,
+      RFID,
+      nationality,
+      areaAccess = { create: [] },
+      deviceAccess = { create: [] },
+      employeeMealAccesses = { create: [] }
+    } = employeeData;
+
+
+    const pinNum = Number(pin);
+
+    const newEmployee = await prisma.employee.create({
+      data: {
+        employeeId: pinNum,
+        pin: pinNum,
+        name,
+        group,
+        privilege,
+        startTime,
+        endTime,
+        departmentId,      // <-- here
+        designationId,     // <-- here
+        phone,
+        email,
+        password,
+        RFID,
+        nationality,
+        areaAccess,
+        deviceAccess,
+      },
+    });
+
+
+    const mealAccessEntries = [];
+    for (const ma of employeeMealAccesses.create) {
+      const { areaId, deviceId, mealTypeId } = ma;
+      const key = `${mealTypeId}-${areaId}-${deviceId}`;
+      const mealRuleId = mealRuleLookup.get(key);
+
+      if (mealRuleId) {
+        mealAccessEntries.push({
+          employeeId: newEmployee.id,
+          areaId,
+          deviceId,
+          mealRuleId,
+        });
+      } else {
+        console.warn(`MealRule not found for: mealTypeId=${mealTypeId}, areaId=${areaId}, deviceId=${deviceId}`);
+      }
+    }
+
+    if (mealAccessEntries.length > 0) {
+      await prisma.employeeMealAccess.createMany({
+        data: mealAccessEntries,
+        skipDuplicates: true,
+      });
+    }
+
+    validEmployeesForCommand.push({
+      pin: pinNum,
+      password,
+      group,
+      startTime,
+      endTime,
+      name,
+      privilege,
+      areaAccess: areaAccess.create.map(a => a.areaId),
+      prisma,
+      RFID,
+      selectedDevices: deviceAccess.create.reduce((acc, d) => {
+        const key = d.areaId;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(d.deviceId);
+        return acc;
+      }, {}),
+      selectedMealRules: mealAccessEntries.reduce((acc, m) => {
+        const key = m.deviceId;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(m.mealRuleId);
+        return acc;
+      }, {}),
+      update: false,
+    });
+
+    newEmployees.push(newEmployee);
+  }
+
+
+  if (validEmployeesForCommand.length > 0) {
+    await buildAndEmitEmployeeCommandsbulkUpdate({
+      employees: validEmployeesForCommand,
+      prisma,
+    });
+  }
+
+  return {
+    success: true,
+    data: newEmployees,
+  };
+};
 
 const updateEmployee = async (employeeId, updatedData) => {
   try {
@@ -122,12 +290,14 @@ const updateEmployee = async (employeeId, updatedData) => {
       name,
       privilege,
       department,
+      designation,
+      nationality,
       phone,
       email,
       RFID,
       areaAccess = [],
       selectedDevices = {},
-      selectedMealRules = {},  // Expecting object { deviceId: [mealRuleIds] }
+      selectedMealRules = {},
     } = updatedData;
 
     const employee = await prisma.employee.findUnique({
@@ -149,6 +319,7 @@ const updateEmployee = async (employeeId, updatedData) => {
       areaAccess,
       prisma,
       RFID,
+      nationality,
       selectedDevices,
       selectedMealRules,
       update: true,  // Indicate this is an update
@@ -175,7 +346,6 @@ const updateEmployee = async (employeeId, updatedData) => {
         }))
     );
 
-    // Bulk insert areaAccess and deviceAccess
     if (areaRecords.length > 0) {
       await prisma.areaAccess.createMany({ data: areaRecords });
     }
@@ -183,12 +353,10 @@ const updateEmployee = async (employeeId, updatedData) => {
       await prisma.deviceAccess.createMany({ data: deviceRecords });
     }
 
-    // Prepare EmployeeMealAccess records
     const employeeMealAccessData = [];
     for (const [deviceIdStr, mealRuleIds] of Object.entries(selectedMealRules)) {
       const deviceId = parseInt(deviceIdStr);
 
-      // Find areaId for this device from selectedDevices mapping
       let areaIdForDevice = null;
       for (const [areaIdStr, deviceIds] of Object.entries(selectedDevices)) {
         if (deviceIds.includes(deviceId)) {
@@ -197,7 +365,6 @@ const updateEmployee = async (employeeId, updatedData) => {
         }
       }
       if (!areaIdForDevice) {
-        // Device not found in selectedDevices under any area - skip or handle accordingly
         continue;
       }
 
@@ -218,8 +385,9 @@ const updateEmployee = async (employeeId, updatedData) => {
         skipDuplicates: true,
       });
     }
+    const depnum = Number(department);
+    const designationnum = Number(designation);
 
-    // Update employee base info
     const updatedEmployee = await prisma.employee.update({
       where: { pin: Number(employeeId) },
       data: {
@@ -230,7 +398,13 @@ const updateEmployee = async (employeeId, updatedData) => {
         endTime,
         name,
         privilege,
-        department,
+        department: {
+          connect: { id: depnum },
+        },
+        designation: {
+          connect: { id: designationnum },
+        },
+        nationality,
         phone,
         email,
         RFID,
@@ -244,12 +418,15 @@ const updateEmployee = async (employeeId, updatedData) => {
   }
 };
 
-
-
 const getAllEmployees = async () => {
   try {
     const employees = await prisma.employee.findMany({
+      orderBy: {
+        pin: 'asc',
+      },
       include: {
+        department: true,
+        designation: true,
         areaAccess: {
           include: { area: true },
         },
@@ -260,17 +437,18 @@ const getAllEmployees = async () => {
             },
           },
         },
-        employeeMealAccesses: {               // ← use the plural relation name
+        employeeMealAccesses: {
           include: {
-            area: true,                       // if you need area info
-            device: true,                     // device info
+            area: true,
+            device: true,
             mealRule: {
               include: {
-                mealType: true,               // for mealType.name, start/end times, etc.
+                mealType: true,
               },
             },
           },
         },
+
       },
     });
 
@@ -280,6 +458,7 @@ const getAllEmployees = async () => {
     throw error;
   }
 };
+
 
 
 
@@ -328,7 +507,7 @@ const deleteEmployee = async (employeeId) => {
       throw new Error('Employee not found');
     }
 
-  //  eventEmitter.emit('employeeDeletion', `Employee with ID ${employeeId} is being deleted.`);
+    //  eventEmitter.emit('employeeDeletion', `Employee with ID ${employeeId} is being deleted.`);
 
     // Delete related AreaAccess and DeviceAccess records first
     await prisma.areaAccess.deleteMany({
@@ -366,5 +545,6 @@ module.exports = {
   getAllEmployees,
   getEmployeeById,
   deleteEmployee,
-  updateEmployee
+  updateEmployee,
+  addEmployeesInBulk
 };

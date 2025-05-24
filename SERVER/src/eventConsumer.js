@@ -1,7 +1,6 @@
 const e = require("express");
 const eventEmitter = require("./eventEmitter");
 
-// Initialize latest data with default values
 let latestData = {
   command: "OK", // default value for command
   SN: null,      // initialize SN as null
@@ -24,18 +23,24 @@ eventEmitter.on("assignTimeZoneCommand", (command) => {
 });
 
 eventEmitter.on("employeeSetupBatch", ({ command, SN }) => {
-  latestData.command = command;  // Stores the full multi-line command string
-  latestData.SN = SN;            // Stores the device serial number
+  latestData.command = command;  
+  latestData.SN = SN;            
   console.log("✅ Received employeeSetupBatch command:", command);
+});
+
+eventEmitter.on("employeeSetupBatchBulk", ({ command, SN }) => {
+  latestData.command = command; 
+  latestData.SN = SN;         
+  console.log("✅ Received employeeSetupBatchBulk command:", command);
 });
 
 
 const setLatestData = (command, SN) => {
-  latestData.command = command;  // Update the command
-  latestData.SN = SN;            // Update the SN
+  latestData.command = command;
+  latestData.SN = SN;            
 };
 
-// Function to get the latest data (command and SN)
+
 const getLatestData = () => latestData;
 
 module.exports = { getLatestData, setLatestData };
