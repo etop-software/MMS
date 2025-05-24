@@ -58,12 +58,12 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
   const [loadingDevices, setLoadingDevices] = useState<number[]>([]);
   const [devicesByArea, setDevicesByArea] = useState<Record<number, any[]>>({});
 
- const nationalities = [
-  "Indian", "Pakistani", "Bangladeshi", "Nepali", "Sri Lankan", "Bhutanese", "Maldivian", "Afghan",
-  "Saudi", "Emirati", "Qatari", "Kuwaiti", "Bahraini", "Omani",
-  "Jordanian", "Lebanese", "Syrian", "Iraqi", "Palestinian", "Egyptian",
-  "Libyan", "Tunisian", "Algerian", "Moroccan", "Mauritanian", "Sudanese", "Yemeni", "Somali"
-];
+  const nationalities = [
+    "Indian", "Pakistani", "Bangladeshi", "Nepali", "Sri Lankan", "Bhutanese", "Maldivian", "Afghan",
+    "Saudi", "Emirati", "Qatari", "Kuwaiti", "Bahraini", "Omani",
+    "Jordanian", "Lebanese", "Syrian", "Iraqi", "Palestinian", "Egyptian",
+    "Libyan", "Tunisian", "Algerian", "Moroccan", "Mauritanian", "Sudanese", "Yemeni", "Somali"
+  ];
 
   const fetchDepartments = async () => {
     const res = await axios.get(`${import.meta.env.VITE_API_URL}/departments`);
@@ -95,7 +95,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
       group: 0,
       privilege: 0,
       department: 0,
-      designation:0,
+      designation: 0,
       phone: "",
       email: "",
       areaAccess: [],
@@ -134,8 +134,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
         ...employeeToEdit,
         areaAccess: prunedAreas,
         selectedDevices: prunedDeviceMap,
-        designation: String(employeeToEdit.designation?.id), 
-        department: String(employeeToEdit.department?.id) ,
+        designation: String(employeeToEdit.designation?.id),
+        department: String(employeeToEdit.department?.id),
       });
       setSelectedAreas(prunedAreas);
       setSelectedDevices(prunedDeviceMap);
@@ -327,7 +327,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
                   </FormItem>
                 )}
               />
-              
+
               {/* RFID */}
               <FormField
                 control={form.control}
@@ -400,30 +400,30 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
                   </FormItem>
                 )}
               />
-<FormField
-  control={form.control}
-  name="nationality"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Nationality</FormLabel>
-      <Select onValueChange={field.onChange} value={field.value}>
-        <FormControl>
-          <SelectTrigger>
-            <SelectValue placeholder="Select nationality" />
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
-          {nationalities.map((n) => (
-            <SelectItem key={n} value={n}>
-              {n}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+              <FormField
+                control={form.control}
+                name="nationality"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nationality</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select nationality" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {nationalities.map((n) => (
+                          <SelectItem key={n} value={n}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Phone */}
               <FormField
@@ -451,82 +451,80 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
                 )}
               />
             </div>
-<FormField
-  control={form.control}
-  name="areaAccess"
-  render={() => (
-    <FormItem>
-      <FormLabel>Area Access</FormLabel>
-      <div className="flex flex-col space-y-4 mb-4">
-        {areasData.map((area: any) => (
-          <div key={area.id} className="flex flex-col space-y-2">
-            {/* Area Checkbox */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id={`area-${area.id}`}
-                checked={selectedAreas.includes(area.id)}
-                onCheckedChange={() => toggleArea(area.id)}
-              />
-              <label htmlFor={`area-${area.id}`} className="text-sm cursor-pointer">
-                {area.name.toUpperCase()} (Area)
-              </label>
-            </div>
-
-            {/* Devices shown only if area is selected */}
-            {selectedAreas.includes(area.id) && (
-              <div className="ml-6 border p-3 rounded-md">
-
-                {devicesByArea[area.id]?.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-2">
-                    {devicesByArea[area.id].map((device) => (
-                      <div key={device.id} className="flex flex-col space-y-1">
+            <FormField
+              control={form.control}
+              name="areaAccess"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Area Access</FormLabel>
+                  <div className="flex flex-col space-y-4 mb-4">
+                    {areasData.map((area: any) => (
+                      <div key={area.id} className="flex flex-col space-y-2">
+                        {/* Area Checkbox */}
                         <div className="flex items-center space-x-2">
                           <Checkbox
-                            id={`device-${device.id}`}
-                            checked={selectedDevices[area.id]?.includes(device.id)}
-                            onCheckedChange={() => toggleDevice(area.id, device.id)}
+                            id={`area-${area.id}`}
+                            checked={selectedAreas.includes(area.id)}
+                            onCheckedChange={() => toggleArea(area.id)}
                           />
-                          <label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
-                            {device.deviceName.toUpperCase()} (Device)
+                          <label htmlFor={`area-${area.id}`} className="text-sm cursor-pointer">
+                            {area.name} (Area)
                           </label>
                         </div>
 
-                        {/* Meal Rules */}
-                        {device.mealRules?.length > 0 ? (
-                          <div className="ml-6 flex flex-col space-y-1">
-                            {device.mealRules.map((rule) => (
-                              <div key={rule.id} className="flex items-center space-x-1">
-                                <Checkbox
-                                  id={`mealRule-${device.id}-${rule.id}`}
-                                  checked={selectedMealRules[device.id]?.includes(rule.id)}
-                                  onCheckedChange={() => toggleMealRule(device.id, rule.id)}
-                                />
-                                <label
-                                  htmlFor={`mealRule-${device.id}-${rule.id}`}
-                                  className="text-xs text-gray-700 cursor-pointer"
-                                >
-                                  {rule.mealType?.name.toUpperCase()}: {rule.startTime} - {rule.endTime}
-                                </label>
+                        {/* Devices shown only if area is selected */}
+                        {selectedAreas.includes(area.id) && (
+                          <div className="ml-6 border p-3 rounded-md">
+
+                            {devicesByArea[area.id]?.length > 0 ? (
+                              <div className="grid grid-cols-1 gap-2">
+                                {devicesByArea[area.id].map((device) => (
+                                  <div key={device.id} className="flex flex-col space-y-1">
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`device-${device.id}`}
+                                        checked={selectedDevices[area.id]?.includes(device.id)}
+                                        onCheckedChange={() => toggleDevice(area.id, device.id)}
+                                      />
+                                      <label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
+                                        {device.deviceName} (Device)
+                                      </label>
+                                    </div>
+
+                                    {/* Meal Rules */}
+                                    {device.mealRules?.length > 0 ? (
+                                      <div className="ml-6 flex flex-col space-y-1">
+                                        {device.mealRules.map((rule) => (
+                                          <div key={rule.id} className="flex items-center space-x-1">
+                                            <Checkbox
+                                              id={`mealRule-${device.id}-${rule.id}`}
+                                              checked={selectedMealRules[device.id]?.includes(rule.id)}
+                                              onCheckedChange={() => toggleMealRule(device.id, rule.id)}
+                                            />
+                                            <label htmlFor={`mealRule-${device.id}-${rule.id}`} className="text-xs text-gray-700 cursor-pointer">
+                                              {rule.mealType?.name.charAt(0).toUpperCase() + rule.mealType?.name.slice(1)}: {rule.startTime} - {rule.endTime}
+                                            </label>
+
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="ml-6 text-xs text-gray-500">No meal rules available</p>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            ) : (
+                              <p className="text-sm text-gray-500">No devices available</p>
+                            )}
                           </div>
-                        ) : (
-                          <p className="ml-6 text-xs text-gray-500">No meal rules available</p>
                         )}
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500">No devices available</p>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </FormItem>
-  )}
-/>
+                </FormItem>
+              )}
+            />
 
 
             <DialogFooter>
