@@ -163,8 +163,6 @@ const addEmployeesInBulk = async (employeeList) => {
     mealRuleLookup.set(key, rule.id);
   }
 
-  const depid = Number(employeeList[0].department);
-  const desid = Number(employeeList[0].designation);
 
   for (const employeeData of employeeList) {
     const {
@@ -175,8 +173,8 @@ const addEmployeesInBulk = async (employeeList) => {
       endTime = '18:00',
       name,
       privilege = 0,
-      departmentId,       // <-- use departmentId
-      designationId,      // <-- use designationId
+      departmentId,      
+      designationId,   
       phone,
       email,
       RFID,
@@ -198,8 +196,8 @@ const addEmployeesInBulk = async (employeeList) => {
         privilege,
         startTime,
         endTime,
-        departmentId,      // <-- here
-        designationId,     // <-- here
+        departmentId,     
+        designationId,   
         phone,
         email,
         password,
@@ -322,7 +320,7 @@ const updateEmployee = async (employeeId, updatedData) => {
       nationality,
       selectedDevices,
       selectedMealRules,
-      update: true,  // Indicate this is an update
+      update: true,  
     });
 
     // Delete previous relations
@@ -330,13 +328,13 @@ const updateEmployee = async (employeeId, updatedData) => {
     await prisma.deviceAccess.deleteMany({ where: { employeeId: employee.id } });
     await prisma.employeeMealAccess.deleteMany({ where: { employeeId: employee.id } });
 
-    // Create new areaAccess records
+
     const areaRecords = areaAccess.map((areaId) => ({
       employeeId: employee.id,
       areaId,
     }));
 
-    // Create new deviceAccess records
+
     const deviceRecords = Object.entries(selectedDevices).flatMap(
       ([areaId, deviceIds]) =>
         deviceIds.map((deviceId) => ({

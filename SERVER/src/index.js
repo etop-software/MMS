@@ -30,6 +30,10 @@ app.use((req, res, next) => {
     next();
   }
 });
+app.use((err, req, res, next) => {
+  res.status(err.statusCode || 500).json({ message: err.message });
+  console.warn(err);
+});
 app.use(bodyParser.json()); 
 app.use(express.json({ limit: '100mb' }));
 app.use(cors({

@@ -8,7 +8,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 
-const cache = new NodeCache({ stdTTL: 3 });
+const cache = new NodeCache({ stdTTL: 300});
 
 const createEmployee = async (req, res) => {
   try {
@@ -39,10 +39,8 @@ const importEmployees = async (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    // Normalize helper: trim, single spaces, lowercase
     const normalize = str => (str || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-    // Your dropdown nationality list, exactly as front-end uses it
     const nationalities = [
       "Indian", "Pakistani", "Bangladeshi", "Nepali", "Sri Lankan", "Bhutanese", "Maldivian", "Afghan",
       "Saudi", "Emirati", "Qatari", "Kuwaiti", "Bahraini", "Omani",
@@ -53,17 +51,17 @@ const importEmployees = async (req, res) => {
     function normalizeNationality(input) {
       if (!input) return null;
       const inputNorm = normalize(input);
-      // Find nationality in the list ignoring case
+
       const matched = nationalities.find(nat => normalize(nat) === inputNorm);
       if (matched) {
-        return matched;  // Return the properly cased nationality
+        return matched; 
       } else {
         console.warn(`⚠️ Unknown nationality: "${input}"`);
-        return null; // or throw error to reject invalid nationality
+        return null; 
       }
     }
 
-    // Fetch all needed DB data
+
     const [areas, devices, mealTypes, mealRules, departments, designations] = await Promise.all([
       prisma.area.findMany({ select: { id: true, name: true } }),
       prisma.device.findMany({ select: { id: true, deviceName: true } }),
@@ -73,12 +71,12 @@ const importEmployees = async (req, res) => {
       prisma.designation.findMany({ select: { id: true, title: true } }),
     ]);
 
-    // Create lookup maps for areas, devices, mealTypes
+
     const areaMap = Object.fromEntries(areas.map(a => [normalize(a.name), a.id]));
     const deviceMap = Object.fromEntries(devices.map(d => [normalize(d.deviceName), d.id]));
     const mealTypeMap = Object.fromEntries(mealTypes.map(mt => [normalize(mt.name), mt.mealTypeId]));
 
-    // Group rows by Employee ID (pin)
+
     const groupedData = data.reduce((acc, row) => {
       const pin = Number(row['Employee ID']);
       if (!acc[pin]) acc[pin] = [];
@@ -86,14 +84,14 @@ const importEmployees = async (req, res) => {
       return acc;
     }, {});
 
-    // Prepare employee list for bulk insert
+
     const employeeList = Object.entries(groupedData).map(([pin, rows]) => {
       const requiredFields = [
         'Employee ID', 'Full Name', 'Password', 'Department', 'Designation', 'Nationality',
         'Access Area', 'Allowed Device', 'Meal Plan Rule'
       ];
 
-      // Validate required fields are present
+
       rows.forEach(row => {
         requiredFields.forEach(field => {
           if (!row[field]) throw new Error(`Missing "${field}" for Employee ID ${pin}`);
@@ -106,7 +104,7 @@ const importEmployees = async (req, res) => {
         'Access Level', 'Department', 'Phone Number', 'Email', 'RFID Code'
       ];
 
-      // Check consistency across rows for same employee
+ 
       rows.forEach(row => {
         fieldsToCheck.forEach(field => {
           if (row[field] !== firstRow[field]) {
@@ -115,13 +113,11 @@ const importEmployees = async (req, res) => {
         });
       });
 
-      // Normalize and validate Nationality using your dropdown list
       const normalizedNationality = normalizeNationality(firstRow['Nationality']);
       if (!normalizedNationality) {
         throw new Error(`Invalid Nationality "${firstRow['Nationality']}" for Employee ID ${pin}`);
       }
 
-      // Meal Plan rules normalization & filtering
       const rawMealRules = rows.map(row => normalize(row['Meal Plan Rule']));
       const mealRulesSet = [...new Set(rawMealRules)].filter(rule => {
         if (!mealTypeMap[rule]) {
@@ -131,11 +127,11 @@ const importEmployees = async (req, res) => {
         return true;
       });
 
-      // Areas and devices normalization
+
       const areasSet = [...new Set(rows.map(row => normalize(row['Access Area'])))];
       const devicesSet = [...new Set(rows.map(row => normalize(row['Allowed Device'])))];
 
-      // Validate areas and devices exist
+
       areasSet.forEach(area => {
         if (!areaMap[area]) throw new Error(`Invalid area name "${area}" for Employee ID ${pin}`);
       });
@@ -143,17 +139,17 @@ const importEmployees = async (req, res) => {
         if (!deviceMap[device]) throw new Error(`Invalid device name "${device}" for Employee ID ${pin}`);
       });
 
-      // Find department in DB list (normalized)
+
       const departmentEntry = departments.find(d => normalize(d.name) === normalize(firstRow['Department']));
       if (!departmentEntry) throw new Error(`Invalid Department "${firstRow['Department']}" for Employee ID ${pin}`);
       const departmentId = departmentEntry.id;
 
-      // Find designation in DB list (normalized)
+
       const designationEntry = designations.find(d => normalize(d.title) === normalize(firstRow['Designation']));
       if (!designationEntry) throw new Error(`Invalid Designation "${firstRow['Designation']}" for Employee ID ${pin}`);
       const designationId = designationEntry.id;
 
-      // Prepare meal accesses
+
       const mealAccesses = mealRulesSet.map(mealRule => {
         const row = rows.find(r => normalize(r['Meal Plan Rule']) === mealRule);
         const areaId = areaMap[normalize(row['Access Area'])];
@@ -175,7 +171,7 @@ const importEmployees = async (req, res) => {
         phone: firstRow['Phone Number'],
         email: firstRow['Email'],
         RFID: firstRow['RFID Code'],
-        nationality: normalizedNationality, // Store capitalized nationality
+        nationality: normalizedNationality, 
 
         areaAccess: {
           create: areasSet.map(area => ({
@@ -257,6 +253,7 @@ const getAllEmployees = async (req, res) => {
     const cachedData = cache.get(cacheKey);
 
     if (cachedData) {
+      console.log("Fetching employees from cache");
       return res.status(200).json({
         message: "Employees fetched from cache",
         data: cachedData,
@@ -264,6 +261,9 @@ const getAllEmployees = async (req, res) => {
     }
 
     const employees = await employeeService.getAllEmployees();
+    
+    console.log("Fetching employees from database and setting to cache");
+
     cache.set(cacheKey, employees);
 
     res.status(200).json({
@@ -275,6 +275,7 @@ const getAllEmployees = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch employees" });
   }
 };
+
 
 const getEmployeeById = async (req, res) => {
   try {

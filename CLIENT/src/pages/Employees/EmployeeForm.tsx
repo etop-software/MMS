@@ -451,70 +451,83 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ isOpen, onClose, employeeTo
                 )}
               />
             </div>
+<FormField
+  control={form.control}
+  name="areaAccess"
+  render={() => (
+    <FormItem>
+      <FormLabel>Area Access</FormLabel>
+      <div className="flex flex-col space-y-4 mb-4">
+        {areasData.map((area: any) => (
+          <div key={area.id} className="flex flex-col space-y-2">
+            {/* Area Checkbox */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={`area-${area.id}`}
+                checked={selectedAreas.includes(area.id)}
+                onCheckedChange={() => toggleArea(area.id)}
+              />
+              <label htmlFor={`area-${area.id}`} className="text-sm cursor-pointer">
+                {area.name.toUpperCase()} (Area)
+              </label>
+            </div>
 
-            <FormField
-              control={form.control}
-              name="areaAccess"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Area Access</FormLabel>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-                    {areasData.map((area: any) => (
-                      <div key={area.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`area-${area.id}`}
-                          checked={selectedAreas.includes(area.id)}
-                          onCheckedChange={() => toggleArea(area.id)}
-                        />
-                        <label htmlFor={`area-${area.id}`} className="text-sm cursor-pointer">
-                          {area.name.toUpperCase()}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+            {/* Devices shown only if area is selected */}
+            {selectedAreas.includes(area.id) && (
+              <div className="ml-6 border p-3 rounded-md">
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {selectedAreas.map((areaId) => (
-                      <div key={areaId}>
-                        <div className="grid grid-cols-1 gap-2">
-                          {devicesByArea[areaId]?.map((device) => (
-                            <div key={device.id} className="flex flex-col space-y-1">
-                              <div className="flex items-center space-x-2">
+                {devicesByArea[area.id]?.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2">
+                    {devicesByArea[area.id].map((device) => (
+                      <div key={device.id} className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`device-${device.id}`}
+                            checked={selectedDevices[area.id]?.includes(device.id)}
+                            onCheckedChange={() => toggleDevice(area.id, device.id)}
+                          />
+                          <label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
+                            {device.deviceName.toUpperCase()} (Device)
+                          </label>
+                        </div>
+
+                        {/* Meal Rules */}
+                        {device.mealRules?.length > 0 ? (
+                          <div className="ml-6 flex flex-col space-y-1">
+                            {device.mealRules.map((rule) => (
+                              <div key={rule.id} className="flex items-center space-x-1">
                                 <Checkbox
-                                  id={`device-${device.id}`}
-                                  checked={selectedDevices[areaId]?.includes(device.id)}
-                                  onCheckedChange={() => toggleDevice(areaId, device.id)}
+                                  id={`mealRule-${device.id}-${rule.id}`}
+                                  checked={selectedMealRules[device.id]?.includes(rule.id)}
+                                  onCheckedChange={() => toggleMealRule(device.id, rule.id)}
                                 />
-                                <label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
-                                  {device.deviceName.toUpperCase()}
+                                <label
+                                  htmlFor={`mealRule-${device.id}-${rule.id}`}
+                                  className="text-xs text-gray-700 cursor-pointer"
+                                >
+                                  {rule.mealType?.name.toUpperCase()}: {rule.startTime} - {rule.endTime}
                                 </label>
                               </div>
-
-                              {device.mealRules?.length > 0 && (
-                                <div className="ml-6 flex flex-wrap gap-2">
-                                  {device.mealRules.map((rule) => (
-                                    <div key={rule.id} className="flex items-center space-x-1">
-                                      <Checkbox
-                                        id={`mealRule-${device.id}-${rule.id}`}
-                                        checked={selectedMealRules[device.id]?.includes(rule.id)}
-                                        onCheckedChange={() => toggleMealRule(device.id, rule.id)}
-                                      />
-                                       <label htmlFor={`rule-${device.id}-${rule.id}`} className="text-xs text-gray-700 cursor-pointer">
-                                        {rule.mealType?.name.toUpperCase()}: {rule.startTime} - {rule.endTime}
-                                      </label>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="ml-6 text-xs text-gray-500">No meal rules available</p>
+                        )}
                       </div>
                     ))}
                   </div>
-                </FormItem>
-              )}
-            />
+                ) : (
+                  <p className="text-sm text-gray-500">No devices available</p>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </FormItem>
+  )}
+/>
+
 
             <DialogFooter>
               <Button variant="outline" onClick={onClose} type="button">

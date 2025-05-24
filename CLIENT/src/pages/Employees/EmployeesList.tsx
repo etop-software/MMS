@@ -13,13 +13,22 @@ import TablePagination from "@/components/common/TablePagination";
 import { usePagination } from "@/hooks/use-pagination";
 import axios from "axios";
 
-// Fetch Employees from API
 const fetchEmployees = async (): Promise<Employee[]> => {
+  // Get allowed area IDs from localStorage
+  const userAccess = JSON.parse(localStorage.getItem('userAccess') || '[]');
+  const allowedAreaIds = userAccess.map((area: { id: number }) => area.id);
+
   const res = await fetch(`${import.meta.env.VITE_API_URL}/employees/employees`);
   if (!res.ok) throw new Error("Failed to fetch employees");
+
   const data = await res.json();
-  return data.data;
+
+  // Filter employees who have at least one matching area in areaAccess
+  return data.data.filter((employee: Employee) =>
+    employee.areaAccess?.some(access => allowedAreaIds.includes(access.areaId))
+  );
 };
+
 
 // Delete Employee from API
 const deleteEmployee = async (employeeId: number) => {

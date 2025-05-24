@@ -20,11 +20,10 @@ const createDesignation = async (req, res) => {
   }
 };
 
-// Get all designations
+
 const getDesignations = async (req, res) => {
   try {
     const designations = await prisma.designation.findMany({
-      include: { employees: true },
     });
     res.json(designations);
   } catch (error) {
